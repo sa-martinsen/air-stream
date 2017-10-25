@@ -8,6 +8,21 @@ function pusher(sequence) {
 
 describe('Observable', function () {
 
+    describe('log', function () {
+
+        const source = new Observable(function (emt) {
+            emt.emit({type: "reinit", count: 2, path: "a"});
+            emt.emit({type: "reinit", acc: 4, path: "c"});
+            emt.emit({type: "reinit", weight: 3, path: "b"});
+        });
+
+        it('simple', (done) => {
+            source.log();
+            done();
+        });
+
+    });
+
     describe('constructor', function () {
 
         const source = new Observable(function (emt) {
@@ -23,7 +38,7 @@ describe('Observable', function () {
                 index++;
                 if(index === 2) done();
             });
-        })
+        });
 
     });
 
@@ -45,7 +60,7 @@ describe('Observable', function () {
                 index++;
                 if(index === 2) done();
             });
-        })
+        });
 
     });
 
@@ -94,7 +109,7 @@ describe('Observable', function () {
                 if(index === 2) done();
             });
 
-        })
+        });
 
     });
 
@@ -111,7 +126,7 @@ describe('Observable', function () {
         let index = 0;
 
         it('simple', (done) => {
-            b.withLatestFrom([a], ([{type, weight, path, ...args}, {count}]) =>
+            b.withLatestFrom([a], ({type, weight, path, ...args}, {count}) =>
                 ({type, ...args, total: weight * count})).on(evt => {
                 expect(evt).to.containSubset([
                     {type: "reinit", total: 6},
@@ -119,7 +134,7 @@ describe('Observable', function () {
                 index++;
                 if(index === 1) done();
             });
-        })
+        });
 
     });
 
@@ -138,7 +153,7 @@ describe('Observable', function () {
         let index = 0;
 
         it('simple', (done) => {
-            b.withLatestFrom([a, c], ([{type, weight, path, ...args}, {count}, {acc}]) =>
+            b.withLatestFrom([a, c], ({type, weight, path, ...args}, {count}, {acc}) =>
                 ({type, ...args, total: weight * count * acc})).on(evt => {
                 expect(evt).to.containSubset([
                     {type: "reinit", total: 24},
@@ -146,7 +161,73 @@ describe('Observable', function () {
                 index++;
                 if(index === 1) done();
             });
-        })
+        });
+
+    });
+
+    describe('withLatestFrom', function () {
+
+        const source = new Observable(function (emt) {
+            emt.emit({type: "reinit", weight: 2, path: "a"});
+            emt.emit({type: "reinit", weight: 3, path: "a"});
+            emt.emit({type: "reinit", weight: 4, path: "a"});
+        });
+
+        let a = source.filter( ({path}) => path === "a" );
+        let b = source.filter( ({path}) => path === "a" );
+        let c = source.filter( ({path}) => path === "a" );
+
+        let index = 0;
+
+        it('self-loop', (done) => {
+            b.withLatestFrom([a, c, b], ({type, weight: a, path, ...args}, {weight: b}, {weight: c}, {weight: d}) =>
+                ({type, ...args, total: a * b * c * d})).on(evt => {
+                expect(evt).to.containSubset([
+                    {type: "reinit", total: 256},
+                ][index]);
+                index++;
+                if(index === 1) done();
+            });
+        });
+
+        it('unsubscribe', (done) => {
+            const source = new Observable(function (emt) {
+                emt.emit({type: "reinit", weight: 2, path: "a"});
+                emt.emit({type: "reinit", weight: 3, path: "a"});
+                emt.emit({type: "reinit", weight: 3, path: "b"});
+                emt.emit({type: "reinit", weight: 4, path: "a"});
+                return done;
+            });
+
+            let a = source.filter( ({path}) => path === "a" );
+            let b = source.filter( ({path}) => path === "a" );
+            let c = source.filter( ({path}) => path === "a" );
+
+            let obs = b.withLatestFrom([a, c, b], ({type, weight: a, path, ...args}) =>
+                ({type, ...args})).on( e => {} );
+            obs();
+            expect(!source.obs.length).to.equal( 0 );
+        });
+
+    });
+
+    describe('combination', function () {
+
+        it('unsubscribe', (done) => {
+            const source = new Observable(function (emt) {
+                emt.emit({type: "reinit", weight: 2, path: "a"});
+                emt.emit({type: "reinit", weight: 3, path: "a"});
+                emt.emit({type: "reinit", weight: 3, path: "b"});
+                emt.emit({type: "reinit", weight: 4, path: "a"});
+                return done;
+            });
+            let a = source
+                .filter( ({path}) => path === "a" )
+                .map( ({weight, ...args}) => ({weight: weight + "77", ...args}) );
+            let obs = a.on( evt => {} );
+            obs();
+            expect(!source.obs.length).to.equal( 0 );
+        });
 
     });
 

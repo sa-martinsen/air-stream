@@ -21,15 +21,14 @@ export default class Observable {
         this.obs.push(obs);
         this.quene && this.quene.forEach( evt => obs( evt ) );
         return () => {
-            this.obs.splice(this.obs.indexOf(obs), -1);
+            this.obs.splice(this.obs.indexOf(obs), 1);
             !this.obs.length && this._disconnect && this._disconnect();
         }
     }
 
     emit({type, __sid__ = Observable.__sid__ ++,...args }) {
         const evt = {type, ...args, __sid__};
-        if(!this.quene && type === "reinit") this.quene = [];
-        else if(!this.quene) throw new EvalError("Transmit an action without first initializing the flow");
+        if(!this.quene) this.quene = [];
         this.quene.push(evt);
         this.obs.forEach( obs => obs( evt ) );
     }
@@ -51,20 +50,28 @@ export default class Observable {
                     return last && last.__sid__ <= evt.__sid__ ? last : null
                 });
                 if(mess.every(msg => msg)) {
-                    emt.emit({...project([evt, ...mess]), __sid__: evt.__sid__});
+                    emt.emit({...project(evt, ...mess), __sid__: evt.__sid__});
                 }
             }
-            //если изменение от источника событий
-            off.push(this.on( check ));
             //если изменение из пассивов
             observables.forEach( obs => off.push(obs.on( evt => {
                 //только если стволовой поток инициализирован
                 //и текущий поток еще не был задействован
-                if(this.quene.length && obs.quene.length === 1)
+                if(this.quene && obs.quene.length === 1)
                     check(this.quene.slice(-1)[0]);
             })) );
+            //если изменение от источника событий
+            off.push(this.on( check ));
             return () => off.forEach( unobserve => unobserve() );
         } );
+    }
+
+    withHandler( handler ) {
+        return new Observable( emt =>
+            this.on( ({__sid__, ...evt}) => handler({
+                emit: args => emt.emit({__sid__, ...args})
+            }, evt) )
+        );
     }
 
     /**
@@ -72,9 +79,7 @@ export default class Observable {
      * @return Observable
      */
     partially(project) {
-        return new Observable( emt => {
-            return this.on( evt => emt.emit( {...evt, ...project(evt)} ) );
-        } );
+        return this.withHandler( (emt, evt) => emt.emit({...evt, ...project(evt)}) );
     }
 
     /**
@@ -82,9 +87,7 @@ export default class Observable {
      * @return Observable
      */
     map( project ) {
-        return new Observable( emt => {
-            return this.on( ({__sid__, ...evt}) => emt.emit( {__sid__, ...project(evt)} ) );
-        } );
+        return this.withHandler( (emt, evt) => emt.emit(project(evt)) );
     }
 
     /**
@@ -93,9 +96,7 @@ export default class Observable {
      * @return Observable
      */
     filter( project ) {
-        return new Observable( emt => {
-            return this.on( evt => project(evt) && emt.emit( evt ) );
-        } );
+        return this.withHandler( (emt, evt) => project(evt) && emt.emit(evt) );
     }
 
     log() {
