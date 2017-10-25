@@ -1,6 +1,7 @@
 {
   "name": "air",
   "version": "1.0.0",
+  "module": "src/index.js",
   "scripts": {
     "dev": "webpack --config=webpack.dev.config.js",
     "test": "mocha --compilers js:babel-core/register",
