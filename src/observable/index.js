@@ -12,6 +12,7 @@ export default class Observable {
     constructor(emitter) {
         this.obs = [];
         this.emitter = emitter;
+        this.queue = [];
     }
 
     on(obs) {
@@ -19,7 +20,7 @@ export default class Observable {
             this._disconnect = this.emitter(this) || null;
         }
         this.obs.push(obs);
-        this.quene && this.quene.forEach( evt => obs( evt ) );
+        this.queue && this.queue.forEach( evt => obs( evt ) );
         return () => {
             this.obs.splice(this.obs.indexOf(obs), 1);
             !this.obs.length && this._disconnect && this._disconnect();
@@ -28,8 +29,7 @@ export default class Observable {
 
     emit({type, __sid__ = Observable.__sid__ ++,...args }) {
         const evt = {type, ...args, __sid__};
-        if(!this.quene) this.quene = [];
-        this.quene.push(evt);
+        this.queue.push(evt);
         this.obs.forEach( obs => obs( evt ) );
     }
 
@@ -46,7 +46,7 @@ export default class Observable {
             const off = [];
             function check(evt) {
                 const mess = observables.map(obs => {
-                    const last = obs.quene && obs.quene.slice(-1)[0];
+                    const last = obs.queue.length && obs.queue.slice(-1)[0];
                     return last && last.__sid__ <= evt.__sid__ ? last : null
                 });
                 if(mess.every(msg => msg)) {
@@ -57,8 +57,9 @@ export default class Observable {
             observables.forEach( obs => off.push(obs.on( evt => {
                 //только если стволовой поток инициализирован
                 //и текущий поток еще не был задействован
-                if(this.quene && obs.quene.length === 1)
-                    check(this.quene.slice(-1)[0]);
+                if(this.queue.length && obs.queue.length === 1) {
+                    check(this.queue.slice(-1)[0]);
+                }
             })) );
             //если изменение от источника событий
             off.push(this.on( check ));
@@ -69,9 +70,17 @@ export default class Observable {
     withHandler( handler ) {
         return new Observable( emt =>
             this.on( ({__sid__, ...evt}) => handler({
-                emit: args => emt.emit({__sid__, ...args})
+                emit: args => emt.emit({__sid__, ...args}),
+                queue: emt.queue
             }, evt) )
         );
+    }
+
+    debounce( project ) {
+        return this.withHandler( (emt, evt) => {
+            project(evt) && (emt.queue.length = 0);
+            return emt.emit(evt);
+        } );
     }
 
     /**

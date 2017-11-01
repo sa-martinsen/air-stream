@@ -138,6 +138,32 @@ describe('Observable', function () {
 
     });
 
+    describe('debounce', function () {
+
+        const source = new Observable(function (emt) {
+            emt.emit({type: "reinit", count: 2, path: "a"});
+            emt.emit({type: "change", acc: 4, path: "a"});
+            emt.emit({type: "change", weight: 3, path: "a"});
+            emt.emit({type: "reinit", weight: 777, path: "a"});
+        });
+
+        let a = source
+            .debounce(({type}) => type === "reinit")
+        ;
+
+        it('simple', (done) => {
+            let index = 0;
+            a.on(evt => {
+                expect(evt).to.containSubset([
+                    {type: "reinit", weight: 777},
+                ][index]);
+                index++;
+                if (index === 1) done();
+            });
+        });
+
+    });
+
     describe('withLatestFrom', function () {
 
         const source = new Observable(function (emt) {
