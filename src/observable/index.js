@@ -9,10 +9,11 @@
 
 export default class Observable {
 
-    constructor(emitter) {
+    constructor(emitter, reglament = null) {
         this.obs = [];
         this.emitter = emitter;
         this.queue = [];
+        this.reglament = reglament;
     }
 
     on(obs) {
@@ -27,8 +28,9 @@ export default class Observable {
         }
     }
 
-    emit({type, __sid__ = Observable.__sid__ ++,...args }) {
-        const evt = {type, ...args, __sid__};
+    emit({ __sid__ = Observable.__sid__ ++,...args }) {
+        this.reglament && this.reglament(this, args);
+        const evt = {...args, __sid__};
         this.queue.push(evt);
         this.obs.forEach( obs => obs( evt ) );
     }
@@ -64,15 +66,16 @@ export default class Observable {
             //если изменение от источника событий
             off.push(this.on( check ));
             return () => off.forEach( unobserve => unobserve() );
-        } );
+        }, this.reglament );
     }
 
     withHandler( handler ) {
-        return new Observable( emt =>
-            this.on( ({__sid__, ...evt}) => handler({
+        return new Observable(
+            emt => this.on( ({__sid__, ...evt}) => handler({
                 emit: args => emt.emit({__sid__, ...args}),
                 queue: emt.queue
-            }, evt) )
+            }, evt) ),
+            this.reglament
         );
     }
 
