@@ -18,13 +18,18 @@ export default class Observable {
 
     on(obs) {
         if(!this.obs.length) {
-            this._disconnect = this.emitter(this) || null;
+            this._caller = this.emitter(this) || null;
         }
         this.obs.push(obs);
         this.queue && this.queue.forEach( evt => obs( evt ) );
-        return () => {
-            this.obs.splice(this.obs.indexOf(obs), 1);
-            !this.obs.length && this._disconnect && this._disconnect();
+        return ({type = "disconnect", ...msg} = {}) => {
+            if(type === "disconnect") {
+                this.obs.splice(this.obs.indexOf(obs), 1);
+                !this.obs.length && this._caller && this._caller();
+            }
+            else {
+                this._caller && this._caller({type, ...msg});
+            }
         }
     }
 
@@ -65,8 +70,15 @@ export default class Observable {
             })) );
             //если изменение от источника событий
             off.push(this.on( check ));
-            return () => off.forEach( unobserve => unobserve() );
-        }, this.reglament );
+            return ({type = "disconnect", ...msg} = {}) => {
+                if(type === "disconnect") {
+                    off.forEach( caller => caller() );
+                }
+                else {
+                    [...off].pop({type, ...msg});
+                }
+            };
+        } );
     }
 
     withHandler( handler ) {

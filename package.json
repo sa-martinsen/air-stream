@@ -29,8 +29,5 @@
     "url": "^0.11.0",
     "webpack": "^3.6.0",
     "webpack-closure-compiler": "^2.1.5"
-  },
-  "dependencies": {
-    "ava": "^0.22.0"
   }
 }

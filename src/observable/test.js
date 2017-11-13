@@ -232,7 +232,7 @@ describe('Observable', function () {
             let obs = b.withLatestFrom([a, c, b], ({type, weight: a, path, ...args}) =>
                 ({type, ...args})).on( e => {} );
             obs();
-            expect(!source.obs.length).to.equal( 0 );
+            expect(source.obs.length).to.equal( 0 );
         });
 
     });
