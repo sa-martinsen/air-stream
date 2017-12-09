@@ -1,6 +1,6 @@
 {
-  "name": "air",
-  "version": "1.0.0",
+  "name": "air-stream",
+  "version": "0.1.1",
   "module": "src/index.js",
   "scripts": {
     "dev": "webpack --config=webpack.dev.config.js",
@@ -10,7 +10,7 @@
     "build:prod": "webpack --config=webpack.prod.config.js"
   },
   "author": "/ai",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
