@@ -115,71 +115,62 @@ describe('Observable', function () {
 
     describe('withLatestFrom', function () {
 
-        const source = new Observable(function (emt) {
-            emt.emit({type: "reinit", count: 2, path: "a"});
-            emt.emit({type: "reinit", weight: 3, path: "b"});
-        });
+        it('simple1', (done) => {
 
-        let a = source.filter( ({path}) => path === "a" );
-        let b = source.filter( ({path}) => path === "b" );
+            const source = new Observable(function (emt) {
+                emt.emit({count: 2, path: "a"}, {type: "reinit"});
+                emt.emit({weight: 3, path: "b"}, {type: "reinit"});
+            });
 
-        let index = 0;
+            let a = source.filter( ({path}) => path === "a" );
+            let b = source.filter( ({path}) => path === "b" );
 
-        it('simple', (done) => {
+            let index = 0;
+
             b.withLatestFrom([a], ({type, weight, path, ...args}, {count}) =>
                 ({type, ...args, total: weight * count})).on(evt => {
                 expect(evt).to.containSubset([
-                    {type: "reinit", total: 6},
+                    {total: 6},
                 ][index]);
                 index++;
                 if(index === 1) done();
             });
         });
 
-    });
-
-    describe('withLatestFrom', function () {
-
-        const source = new Observable(function (emt) {
-            emt.emit({type: "reinit", count: 2, path: "a"});
-            emt.emit({type: "reinit", acc: 4, path: "c"});
-            emt.emit({type: "reinit", weight: 3, path: "b"});
-        });
-
-        let a = source.filter( ({path}) => path === "a" );
-        let b = source.filter( ({path}) => path === "b" );
-        let c = source.filter( ({path}) => path === "c" );
-
-        let index = 0;
-
-        it('simple', (done) => {
+        it('simple2', (done) => {
+            const source = new Observable(function (emt) {
+                emt.emit({ count: 2, path: "a"}, {type: "reinit"});
+                emt.emit({ acc: 4, path: "c"}, {type: "reinit"});
+                emt.emit({ weight: 3, path: "b"}, {type: "reinit"});
+            });
+            let a = source.filter( ({path}) => path === "a" );
+            let b = source.filter( ({path}) => path === "b" );
+            let c = source.filter( ({path}) => path === "c" );
+            let index = 0;
             b.withLatestFrom([a, c], ({type, weight, path, ...args}, {count}, {acc}) =>
                 ({type, ...args, total: weight * count * acc})).on(evt => {
                 expect(evt).to.containSubset([
-                    {type: "reinit", total: 24},
+                    {total: 24},
                 ][index]);
                 index++;
                 if(index === 1) done();
             });
         });
 
-    });
-
-    describe('withLatestFrom', function () {
-
-        const source = new Observable(function (emt) {
-            emt.emit({ weight: 2, path: "a"}, { type: "reinit" });
-            emt.emit({ weight: 3, path: "a"}, { type: "reinit" });
-            emt.emit({ weight: 4, path: "a"}, { type: "reinit" });
-        });
-
-        let a = source.filter( ({path}) => path === "a" );
-        let b = source.filter( ({path}) => path === "a" );
-        let c = source.filter( ({path}) => path === "a" );
-
-        let index = 0;
-
         it('self-loop', (done) => {
+
+            const source = new Observable(function (emt) {
+                emt.emit({ weight: 2, path: "a"}, { type: "reinit" });
+                emt.emit({ weight: 3, path: "a"}, { type: "reinit" });
+                emt.emit({ weight: 4, path: "a"}, { type: "reinit" });
+            });
+
+            let a = source.filter( ({path}) => path === "a" );
+            let b = source.filter( ({path}) => path === "a" );
+            let c = source.filter( ({path}) => path === "a" );
+
+            let index = 0;
+
             b.withLatestFrom([a, c, b], ({type, weight: a, path, ...args}, {weight: b}, {weight: c}, {weight: d}) =>
                 ({type, ...args, total: a * b * c * d})).on(evt => {
                 expect(evt).to.containSubset([
