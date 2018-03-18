@@ -138,32 +138,6 @@ describe('Observable', function () {
 
     });
 
-    describe('debounce', function () {
-
-        const source = new Observable(function (emt) {
-            emt.emit({type: "reinit", count: 2, path: "a"});
-            emt.emit({type: "change", acc: 4, path: "a"});
-            emt.emit({type: "change", weight: 3, path: "a"});
-            emt.emit({type: "reinit", weight: 777, path: "a"});
-        });
-
-        let a = source
-            .debounce(({type}) => type === "reinit")
-        ;
-
-        it('simple', (done) => {
-            let index = 0;
-            a.on(evt => {
-                expect(evt).to.containSubset([
-                    {type: "reinit", weight: 777},
-                ][index]);
-                index++;
-                if (index === 1) done();
-            });
-        });
-
-    });
-
     describe('withLatestFrom', function () {
 
         const source = new Observable(function (emt) {
@@ -194,9 +168,9 @@ describe('Observable', function () {
     describe('withLatestFrom', function () {
 
         const source = new Observable(function (emt) {
-            emt.emit({type: "reinit", weight: 2, path: "a"});
-            emt.emit({type: "reinit", weight: 3, path: "a"});
-            emt.emit({type: "reinit", weight: 4, path: "a"});
+            emt.emit({ weight: 2, path: "a"}, { type: "reinit" });
+            emt.emit({ weight: 3, path: "a"}, { type: "reinit" });
+            emt.emit({ weight: 4, path: "a"}, { type: "reinit" });
         });
 
         let a = source.filter( ({path}) => path === "a" );
@@ -209,7 +183,7 @@ describe('Observable', function () {
             b.withLatestFrom([a, c, b], ({type, weight: a, path, ...args}, {weight: b}, {weight: c}, {weight: d}) =>
                 ({type, ...args, total: a * b * c * d})).on(evt => {
                 expect(evt).to.containSubset([
-                    {type: "reinit", total: 256},
+                    { total: 256 },
                 ][index]);
                 index++;
                 if(index === 1) done();
@@ -218,10 +192,10 @@ describe('Observable', function () {
 
         it('unsubscribe', (done) => {
             const source = new Observable(function (emt) {
-                emt.emit({type: "reinit", weight: 2, path: "a"});
-                emt.emit({type: "reinit", weight: 3, path: "a"});
-                emt.emit({type: "reinit", weight: 3, path: "b"});
-                emt.emit({type: "reinit", weight: 4, path: "a"});
+                emt.emit({ weight: 2, path: "a"});
+                emt.emit({ weight: 3, path: "a"});
+                emt.emit({ weight: 3, path: "b"});
+                emt.emit({ weight: 4, path: "a"});
                 return done;
             });
 

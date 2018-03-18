@@ -17,20 +17,29 @@ export default class Observable {
 
     on(obs) {
         if(!this.obs.length) {
-            this._disconnect = this.emitter(this) || null;
+            const emt = (evt, src) => this.emit(evt, src);
+            emt.emit = emt;
+            emt.complete = (evt, src) => this.complete(evt, src);
+            this._disconnect = this.emitter(emt) || null;
         }
         this.obs.push(obs);
-        this.queue && this.queue.forEach( evt => obs( evt ) );
+        this.queue && this.queue.forEach( evt => obs( ...evt ) );
         return () => {
             this.obs.splice(this.obs.indexOf(obs), 1);
             !this.obs.length && this._disconnect && this._disconnect();
         }
     }
 
-    emit({type, __sid__ = Observable.__sid__ ++,...args }) {
-        const evt = {type, ...args, __sid__};
+    emit(data, { __sid__ = Observable.__sid__ ++, type = "reinit"} = {}) {
+        const evt = [data, {__sid__, type}];
         this.queue.push(evt);
-        this.obs.forEach( obs => obs( evt ) );
+        this.obs.forEach( obs => obs( ...evt ) );
+    }
+
+    complete(data, { __sid__ = Observable.__sid__ ++, type = "complete"} = {}) {
+        const evt = [data, {__sid__, type}];
+        this.queue.push(evt);
+        this.obs.forEach( obs => obs( ...evt ) );
     }
 
     /**
@@ -44,13 +53,13 @@ export default class Observable {
     withLatestFrom(observables = [], project = (...args) => args) {
         return new Observable( emt => {
             const off = [];
-            function check(evt) {
+            function check(evt, src) {
                 const mess = observables.map(obs => {
                     const last = obs.queue.length && obs.queue.slice(-1)[0];
-                    return last && last.__sid__ <= evt.__sid__ ? last : null
+                    return last && last.__sid__ <= src.__sid__ ? last : null
                 });
                 if(mess.every(msg => msg)) {
-                    emt.emit({...project(evt, ...mess), __sid__: evt.__sid__});
+                    emt({...project(evt, ...mess)}, src);
                 }
             }
             //если изменение из пассивов
@@ -58,7 +67,7 @@ export default class Observable {
                 //только если стволовой поток инициализирован
                 //и текущий поток еще не был задействован
                 if(this.queue.length && obs.queue.length === 1) {
-                    check(this.queue.slice(-1)[0]);
+                    check(...this.queue.slice(-1)[0]);
                 }
             })) );
             //если изменение от источника событий
@@ -69,17 +78,18 @@ export default class Observable {
 
     withHandler( handler ) {
         return new Observable( emt =>
-            this.on( ({__sid__, ...evt}) => handler({
-                emit: args => emt.emit({__sid__, ...args}),
-                queue: emt.queue
-            }, evt) )
+            this.on( (evt, src) => {
+                const _emt = evt => emt(evt, src);
+                _emt.emit = _emt;
+                return handler(_emt, evt)
+            })
         );
     }
 
-    debounce( project ) {
+    ifExist( project ) {
         return this.withHandler( (emt, evt) => {
-            project(evt) && (emt.queue.length = 0);
-            return emt.emit(evt);
+            const data = project(evt);
+            data && emt(data)
         } );
     }
 
@@ -88,7 +98,7 @@ export default class Observable {
      * @return Observable
      */
     partially(project) {
-        return this.withHandler( (emt, evt) => emt.emit({...evt, ...project(evt)}) );
+        return this.withHandler( (emt, evt) => emt({...evt, ...project(evt)}) );
     }
 
     /**
@@ -96,7 +106,7 @@ export default class Observable {
      * @return Observable
      */
     map( project ) {
-        return this.withHandler( (emt, evt) => emt.emit(project(evt)) );
+        return this.withHandler( (emt, evt) => emt(project(evt)) );
     }
 
     /**
@@ -105,7 +115,7 @@ export default class Observable {
      * @return Observable
      */
     filter( project ) {
-        return this.withHandler( (emt, evt) => project(evt) && emt.emit(evt) );
+        return this.withHandler( (emt, evt) => project(evt) && emt(evt) );
     }
 
     log() {
