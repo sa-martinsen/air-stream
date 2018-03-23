@@ -1,5 +1,4 @@
 const path = require('path');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 let buildConfig = {
     devtool: "source-map",
