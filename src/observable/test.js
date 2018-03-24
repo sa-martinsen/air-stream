@@ -11,9 +11,9 @@ describe('Observable', function () {
     describe('log', function () {
 
         const source = new Observable(function (emt) {
-            emt.emit({type: "reinit", count: 2, path: "a"});
-            emt.emit({type: "reinit", acc: 4, path: "c"});
-            emt.emit({type: "reinit", weight: 3, path: "b"});
+            emt.emit({count: 2, path: "a"});
+            emt.emit({acc: 4, path: "c"});
+            emt.emit({weight: 3, path: "b"});
         });
 
         it('simple', (done) => {
