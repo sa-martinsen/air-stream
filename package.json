@@ -8,7 +8,7 @@
     "build:module": "webpack --config=webpack.module.config.js",
     "build:dist": "webpack --config=webpack.dist.config.js",
     "build:prod": "webpack --config=webpack.prod.config.js",
-    "patch": "npm version patch && npm publish"
+    "patch": "npm version patch && npm publish && git push origin"
   },
   "author": "/ai",
   "license": "MIT",
