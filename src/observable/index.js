@@ -87,7 +87,7 @@ export default class Observable {
         );
     }
 
-    ifExist( project ) {
+    cut( project ) {
         return this.withHandler( (emt, evt) => {
             const data = project(evt);
             data && emt(data)
