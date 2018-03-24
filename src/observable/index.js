@@ -30,8 +30,9 @@ export default class Observable {
         }
     }
 
-    emit(data, { __sid__ = Observable.__sid__ ++, type = "reinit"} = {}) {
+    emit(data, { __sid__ = Observable.__sid__ ++, type = this.queue.length  ? "change" : "reinit"} = {}) {
         const evt = [data, {__sid__, type}];
+        type === "reinit" && (this.queue.length = 0);
         this.queue.push(evt);
         this.obs.forEach( obs => obs( ...evt ) );
     }
@@ -119,7 +120,7 @@ export default class Observable {
     }
 
     log() {
-        this.on( evt => console.log(evt));
+        this.on( (evt, src) => console.log(evt, src));
     }
 
 }
