@@ -1,25 +1,12 @@
 import {expect} from "chai";
 import Observable from "../index";
-
-function expectedCount(done, assert) {
-    let count = 0;
-    let id;
-    return function (...args) {
-        assert[count](...args);
-        count++;
-        assert.length === count && (id = setTimeout(done));
-        if(count > assert.length) {
-            clearTimeout(id);
-            expect(`count done test`).to.equal(assert.length);
-        }
-    }
-}
+import {series} from "./utils"
 
 describe('combine', function () {
 
     it('simple1', (done) => {
 
-        done = expectedCount(done, [
+        done = series(done, [
             evt => expect(evt).to.deep.equal([1, 2]),
             evt => expect(evt).to.deep.equal([1, 3]),
             evt => expect(evt).to.deep.equal([4, 3]),

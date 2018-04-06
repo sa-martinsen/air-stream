@@ -1,6 +1,7 @@
 import {expect} from "chai";
 import Observable from "../index";
 import {describe, it} from "mocha";
+import {series} from "./utils";
 
 function pusher(sequence) {
     return data => sequence.push(data);
