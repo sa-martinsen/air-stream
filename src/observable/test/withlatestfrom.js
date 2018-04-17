@@ -13,8 +13,6 @@ describe('withLatestFrom', function () {
         let a = source.filter( ({path}) => path === "a" );
         let b = source.filter( ({path}) => path === "b" );
 
-        b.log();
-
         let index = 0;
 
         b.withLatestFrom([a], ({type, weight, path, ...args}, {count}) =>
