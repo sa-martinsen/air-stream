@@ -1,6 +1,6 @@
 {
   "name": "air-stream",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "module": "src/index.js",
   "scripts": {
     "dev": "webpack --config=webpack.dev.config.js",
