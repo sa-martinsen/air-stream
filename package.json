@@ -4,7 +4,7 @@
   "module": "src/index.js",
   "scripts": {
     "dev": "webpack --config=webpack.dev.config.js",
-    "test": "mocha --timeout 10 --require babel-core/register",
+    "test": "mocha --timeout 50 --require babel-core/register",
     "patch": "npm version patch && npm publish && git push origin",
     "minor": "npm version minor && npm publish && git push origin"
   },
