@@ -4,6 +4,9 @@ export function series(done, assert) {
     let count = 0;
     let id;
     return function (...args) {
+        if(assert[count] === undefined) {
+            return expect(`count done test more then`).to.equal(count);
+        }
         assert[count](...args);
         count++;
         assert.length === count && (id = setTimeout(done));
