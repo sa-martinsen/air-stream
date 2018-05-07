@@ -64,6 +64,7 @@ describe('reduce', function () {
 
         done = series(done, [
             evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( Observable.keyF ),
             evt => expect(evt).to.deep.equal( { n: [  ], id: 158, stage: 1, time: 0 } ),
             evt => expect(evt).to.deep.equal( { n: [ 10, 15, ], id: 158, stage: 1, time: 0 } ),
             evt => expect(evt).to.deep.equal( { n: [ 10, 15, 16, 17, 18, ], id: 158, stage: 1, time: 0 } ),
@@ -111,8 +112,6 @@ describe('reduce', function () {
 
         } );
 
-        reducer.log();
-
         reducer.on( done );
 
     });
@@ -139,7 +138,7 @@ describe('reduce', function () {
             emt({ action: "next" });
             setTimeout(function () {
                 emt.kf();
-            });
+            }, 30);
         } );
 
         const initor = source.filter(({action}) => !action);

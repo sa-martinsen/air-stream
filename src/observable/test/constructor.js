@@ -1,32 +1,133 @@
 import {expect} from "chai";
 import Observable from "../index";
 import {series} from "./utils"
+import {describe, it} from "mocha";
 
 describe('constructor', function () {
 
-    it('with queue', (done) => {
+    it('simple', (done) => {
 
         done = series(done, [
             evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 1 ),
-            evt => expect(evt).to.deep.equal( 2 ),
             evt => expect(evt).to.deep.equal( 3 ),
             evt => expect(evt).to.deep.equal( 4 ),
-            evt => expect(evt).to.deep.equal( 5 ),
+        ]);
+
+        const source = new Observable(function (emt) {
+            emt.kf();
+            emt(1);
+            emt(2);
+            emt.kf();
+            emt(3);
+            emt(4);
+        });
+
+        source.on(done);
+
+    });
+
+    it('empty queue', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal( Observable.keyF ),
+        ]);
+
+        const source = new Observable(function (emt) {
+            emt.kf();
+            emt(1);
+            emt(2);
+            emt.kf();
+            emt(3);
+            emt(4);
+            emt.kf();
+        });
+
+        source.on(done);
+
+    });
+
+    it('second subscriber after events', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( 6 ),
+            evt => expect(evt).to.deep.equal( 7 ),
         ]);
 
         const source = new Observable( emt => {
+            emt.kf();
+            emt(1);
+            emt(2);
+            emt(3);
             emt(4);
             emt(5);
-        }, [
-            [Observable.keyF, { __sid__: -1 }],
-            [1, { __sid__: -1 }],
-            [2, { __sid__: -1 }],
-            [3, { __sid__: -1 }],
-        ]);
+            emt.kf();
+            emt(6);
+            emt(7);
+        });
 
-        source.on( done );
+        source.on( () => {} );
+
+        setTimeout(() => source.on( done ));
 
     });
+
+    it('unsubscribe', (done) => {
+
+        done = series(done, [ ]);
+
+        const source = new Observable( emt => {
+            emt.kf();
+            emt(1);
+            emt(2);
+            emt(3);
+            emt(4);
+            emt(5);
+            emt.kf();
+            emt(6);
+            emt(7);
+            setTimeout( () => emt(8) );
+        });
+
+        source.on( done )();
+/*
+        setTimeout(() => off = source.on( done ));
+        setTimeout(() => off() );*/
+
+    });
+
+    it('unsubscribe over time', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( 6 ),
+            evt => expect(evt).to.deep.equal( 7 ),
+        ]);
+
+        const source = new Observable( emt => {
+            emt.kf();
+            emt(1);
+            emt(2);
+            emt(3);
+            emt(4);
+            emt(5);
+            emt.kf();
+            emt(6);
+            emt(7);
+            setTimeout( () => emt(8) );
+        });
+
+        const uns = source.on( done );
+        setTimeout(() => uns());
+
+    });
+
+    /*<DEBUG TODO>*/
+    it('without connect', () => {
+        new Observable(function (emt) {
+            expect(() => emt(1)).to.throw( );
+        });
+    });
+    /*</DEBUG>*/
 
 });

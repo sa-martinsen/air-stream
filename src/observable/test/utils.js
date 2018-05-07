@@ -1,6 +1,7 @@
 import {expect} from "chai";
 
 export function series(done, assert) {
+    if(!assert.length) setTimeout(done);
     let count = 0;
     let id;
     return function (...args) {

@@ -1,4 +1,8 @@
 
+//import "./map"
+
+//import "./filter"
+
 //import "./constructor"
 import "./reducer"
 /*
