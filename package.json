@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "module": "src/index.js",
   "scripts": {
+    "start": "node run.js",
     "dev": "webpack --config=webpack.dev.config.js",
     "test": "mocha --timeout 50 --require babel-core/register",
     "patch": "npm version patch && npm publish && git push origin",

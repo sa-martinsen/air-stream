@@ -4,7 +4,7 @@
 //import "./filter"
 
 //import "./constructor"
-import "./reducer"
+//import "./reducer"
 /*
 import "./simple"
 import "./withlatestfrom"
@@ -13,3 +13,5 @@ import "./merge"
 import "./first"
 
 */
+
+import "./reduce"
