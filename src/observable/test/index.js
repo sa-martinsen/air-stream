@@ -15,3 +15,5 @@ import "./first"
 */
 
 import "./reduce"
+
+import "./service"
