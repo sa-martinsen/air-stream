@@ -1,19 +1,17 @@
-
-//import "./map"
-
-//import "./filter"
-
-//import "./constructor"
-//import "./reducer"
+/*
+import "./map"
+import "./filter"
+import "./constructor"
+import "./reduce"
+import "./service"
+*/
 /*
 import "./simple"
 import "./withlatestfrom"
 import "./combine"
-import "./merge"
 import "./first"
 
 */
 
-import "./reduce"
 
-import "./service"
+import "./combine"

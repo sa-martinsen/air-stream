@@ -90,9 +90,6 @@ describe('constructor', function () {
         });
 
         source.on( done )();
-/*
-        setTimeout(() => off = source.on( done ));
-        setTimeout(() => off() );*/
 
     });
 
@@ -121,13 +118,5 @@ describe('constructor', function () {
         setTimeout(() => uns());
 
     });
-
-    /*<DEBUG TODO>*/
-    it('without connect', () => {
-        new Observable(function (emt) {
-            expect(() => emt(1)).to.throw( );
-        });
-    });
-    /*</DEBUG>*/
 
 });

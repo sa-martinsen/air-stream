@@ -15,12 +15,12 @@ describe('combine', function () {
         ]);
 
         const source = new Observable(function (emt) {
-            emt.emit({count: 1, path: "a"});
-            emt.emit({count: 2, path: "b"});
-            emt.emit({count: 3, path: "b"});
-            emt.emit({count: 4, path: "a"});
-            setTimeout( () => emt.emit({count: 5, path: "a"}) );
-            setTimeout( () => emt.emit({count: 6, path: "b"}) );
+            emt({count: 1, path: "a"});
+            emt({count: 2, path: "b"});
+            emt({count: 3, path: "b"});
+            emt({count: 4, path: "a"});
+            setTimeout( () => emt({count: 5, path: "a"}) );
+            setTimeout( () => emt({count: 6, path: "b"}) );
         });
 
         let a = source.filter( ({path}) => path === "a" );
