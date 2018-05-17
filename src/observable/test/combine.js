@@ -7,6 +7,7 @@ describe('combine', function () {
     it('simple1', (done) => {
 
         done = series(done, [
+            evt => expect(evt).to.deep.equal(Observable.keyF),
             evt => expect(evt).to.deep.equal([1, 2]),
             evt => expect(evt).to.deep.equal([1, 3]),
             evt => expect(evt).to.deep.equal([4, 3]),
@@ -21,6 +22,23 @@ describe('combine', function () {
             emt({count: 4, path: "a"});
             setTimeout( () => emt({count: 5, path: "a"}) );
             setTimeout( () => emt({count: 6, path: "b"}) );
+        });
+
+        let a = source.filter( ({path}) => path === "a" );
+        let b = source.filter( ({path}) => path === "b" );
+
+        Observable.combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+
+    });
+
+    it('combine key', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(Observable.keyF),
+        ]);
+
+        const source = new Observable(function (emt) {
+            emt.kf();
         });
 
         let a = source.filter( ({path}) => path === "a" );
