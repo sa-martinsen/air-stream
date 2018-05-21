@@ -1,6 +1,6 @@
 import {expect} from "chai";
-import Observable from "../index";
-import {series} from "./utils"
+import Observable from "../index.js"
+import {series} from "./utils.js"
 
 describe('combine', function () {
 
@@ -24,8 +24,8 @@ describe('combine', function () {
             setTimeout( () => emt({count: 6, path: "b"}) );
         });
 
-        let a = source.filter( ({path}) => path === "a" );
-        let b = source.filter( ({path}) => path === "b" );
+        const a = source.filter( ({path}) => path === "a" );
+        const b = source.filter( ({path}) => path === "b" );
 
         Observable.combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
 
@@ -41,8 +41,8 @@ describe('combine', function () {
             emt.kf();
         });
 
-        let a = source.filter( ({path}) => path === "a" );
-        let b = source.filter( ({path}) => path === "b" );
+        const a = source.filter( ({path}) => path === "a" );
+        const b = source.filter( ({path}) => path === "b" );
 
         Observable.combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
 
