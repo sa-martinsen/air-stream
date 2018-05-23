@@ -8,6 +8,7 @@ describe('first', function () {
     it('simple', (done) => {
 
         done = series(done, [
+            evt => expect(evt).to.equal(Observable.keyF),
             evt => expect(evt).to.equal(1)
         ]);
 
@@ -23,6 +24,7 @@ describe('first', function () {
     it('with combine()', (done) => {
 
         done = series(done, [
+            evt => expect(evt).to.equal(Observable.keyF),
             evt => expect(evt).to.deep.equal([3, 3])
         ]);
 
