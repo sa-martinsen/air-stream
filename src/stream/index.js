@@ -6,8 +6,8 @@ export default stream = creator =>
         const sweep = new Collector();
         const hook = new Collector();
         const res = creator( emt, { sweep, hook } );
-        sweep.add(res.sweep);
-        hook.add(res.hook);
+        res && res.sweep && sweep.add(res.sweep);
+        res && res.hook && hook.add(res.hook);
         return ({dissolve = false, ...args}) => {
             if(dissolve) {
                 sweep.use();
