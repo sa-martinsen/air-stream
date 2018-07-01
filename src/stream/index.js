@@ -1,7 +1,7 @@
 import Observable from "../observable"
 import Collector from "./collector"
 
-export default stream = creator =>
+export default creator =>
     new Observable( emt => {
         const sweep = new Collector();
         const hook = new Collector();

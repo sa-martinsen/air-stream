@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import Observable from "../index.js"
+import Observable, {combine} from "../index.js"
 import {series} from "./utils.js"
 
 describe('combine', function () {
@@ -27,7 +27,7 @@ describe('combine', function () {
         const a = source.filter( ({path}) => path === "a" );
         const b = source.filter( ({path}) => path === "b" );
 
-        Observable.combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+        combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
 
     });
 
@@ -44,7 +44,61 @@ describe('combine', function () {
         const a = source.filter( ({path}) => path === "a" );
         const b = source.filter( ({path}) => path === "b" );
 
-        Observable.combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+        combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+
+    });
+
+    it('combine dbl key', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(Observable.keyF),
+            evt => expect(evt).to.deep.equal(["b", "a"]),
+        ]);
+
+        const source1 = new Observable(function (emt) {
+            emt.kf();
+            emt.kf();
+            emt( 'b' );
+        });
+
+        const source2 = new Observable(function (emt) {
+            setTimeout( () => emt( "a" ) )
+        });
+
+        combine([source1, source2] ).on( done );
+
+    });
+
+    it('several observers', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(Observable.keyF),
+            evt => expect(evt).to.deep.equal(["b", "0"]),
+            evt => expect(evt).to.deep.equal(["b", "1"]),
+            evt => expect(evt).to.deep.equal(["c", "1"]),
+        ]);
+
+        const source1 = new Observable(function (emt) {
+            emt.kf();
+            emt.kf();
+            emt( 'b' );
+            setTimeout( () => emt( "c" ), 20 );
+        });
+
+        const source2 = new Observable(function (emt) {
+            emt.kf();
+            emt("0");
+            emt("1");
+        });
+
+        source1.on( () => {} );
+        source2.on( () => {} );
+
+        const res = combine([ source1, source2] );
+        setTimeout( () => {
+            res.on( done );
+        }, 20 );
+
 
     });
 
