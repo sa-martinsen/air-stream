@@ -5,16 +5,16 @@ export default creator =>
     new Observable( emt => {
         const sweep = new Collector();
         const hook = new Collector();
-        const res = creator( emt, { sweep, hook } );
-        res && res.sweep && sweep.add(res.sweep);
-        res && res.hook && hook.add(res.hook);
-        return ({dissolve = false, ...args}) => {
+        const over = new Collector();
+        const res = creator( emt, { sweep, hook, over } );
+        if(typeof res === "function") sweep.add( res );
+        return ({dissolve = false, ...args} = {dissolve: true}) => {
             if(dissolve) {
-                sweep.use();
-                hook.use();
+                sweep.use( { dissolve: true } );
+                over.use( { dissolve: true } );
             }
             else {
-                hook.use(args);
+                hook.use( { dissolve: false, ...args });
             }
         }
     } );

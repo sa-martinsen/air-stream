@@ -13,12 +13,12 @@ export default class Collector {
     }
 
     force( ...args ) {
-        Collector.use(...args, { dissolve: true });
+        Collector.use(args, { dissolve: true });
         this.del( ...args );
     }
 
     static use( item, { dissolve = false, ...args } = {  dissolve: true } ) {
-        item.map( x => x(args) );
+        item.map( x => x({ dissolve , ...args} ) );
     }
 
     use( args ) {
