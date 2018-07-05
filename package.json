@@ -1,6 +1,6 @@
 {
   "name": "air-stream",
-  "version": "0.4.2",
+  "version": "0.5.4",
   "module": "src/index.js",
   "scripts": {
     "start": "node run.js",

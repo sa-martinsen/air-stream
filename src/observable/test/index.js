@@ -5,6 +5,8 @@ import "./reduce"
 import "./service"
 import "./combine"
 import "./first"
+import "./merge"
+import "./complicated"
 
 /*
 import "./simple"

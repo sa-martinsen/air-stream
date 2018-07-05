@@ -1,5 +1,7 @@
-import {expect} from "chai";
-import Observable from "../index";
+import {describe, it} from "mocha"
+import { merge, stream, keyF } from "../../"
+import {expect} from "chai"
+import {series} from "./utils"
 
 
 class Socket {
@@ -28,7 +30,7 @@ class Socket {
     }
 
 }
-
+/*
 describe('1.', function () {
 
     it('a)', (done) => {
@@ -48,6 +50,40 @@ describe('1.', function () {
                 socket.send( { action, ...args } );
             }
         });
+
+    });
+
+});*/
+
+describe('complicated', function () {
+
+    it('stream reopening', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal( keyF ),
+            evt => expect(evt).to.equal( "a1" ),
+            evt => expect(evt).to.equal( "b2" ),
+            evt => expect(evt).to.equal( "c3" ),
+            evt => expect(evt).to.equal( "d4" ),
+            evt => expect(evt).to.deep.equal( keyF ),
+            evt => expect(evt).to.equal( "a1" ),
+            evt => expect(evt).to.equal( "b2" ),
+            evt => expect(evt).to.equal( "c3" ),
+            evt => expect(evt).to.equal( "d4" ),
+        ]);
+
+        const source = stream( emt => {
+            emt("a1");
+            emt("b2");
+            emt("c3");
+            emt("d4");
+        } );
+
+        const hook = source.on( done );
+        setTimeout(() => {
+            hook();
+            source.on( done );
+        }, 10);
 
     });
 
