@@ -15,6 +15,7 @@ export default creator =>
             }
             else {
                 hook.use( { dissolve: false, ...args });
+                over.use( { dissolve: false, ...args });
             }
         }
     } );
