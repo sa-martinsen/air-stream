@@ -10,12 +10,11 @@ export default creator =>
         if(typeof res === "function") sweep.add( res );
         return ({dissolve = false, ...args} = {dissolve: true}) => {
             if(dissolve) {
-                sweep.use( { dissolve: true } );
-                over.use( { dissolve: true } );
+                sweep.use( { dissolve } );
             }
             else {
-                hook.use( { dissolve: false, ...args });
-                over.use( { dissolve: false, ...args });
+                hook.use( { dissolve, ...args });
             }
+            over.use( { dissolve, ...args });
         }
     } );
