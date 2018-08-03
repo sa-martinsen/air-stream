@@ -24,7 +24,7 @@ export default class Observable {
     }
 
     on(obs) {
-        /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function` /*</@>*/
+        /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function`; /*</@>*/
         if(!this.obs.length) {
             const emt = (evt, src) => this.emit(evt, src);
             emt.emit = emt;
@@ -36,16 +36,13 @@ export default class Observable {
         this.obs.push(obs);
         return ( { dissolve = false, ... args } = { dissolve: true } ) => {
             if(dissolve) {
-                const deleted = this.obs.indexOf(obs);
-                if(deleted < 0) throw "observable not in queue";
-                this.obs.splice(deleted, 1);
+                const cut = this.obs.indexOf(obs);
+                /*<@>*/if(cut < 0) throw `attempt to delete an observer out of the container`;/*</@>*/
+                this.obs.splice(cut, 1);
                 if(!this.obs.length) {
                     this.init = false;
                     this.queue = [];
-                    this.processed.map( process => {
-                        this.cutFromQueue(process);
-                    } );
-                    this.processed = [];
+                    this.clearProcessed();
                 }
                 if(this._disconnect) {
                     if(!this.obs.length) {
@@ -100,6 +97,13 @@ export default class Observable {
         return this.on( (...args) => !keys.includes(args[0]) && obs(...args) );
     }
 
+    clearProcessed() {
+        this.processed.map( process => {
+            this.cutFromQueue(process);
+        } );
+        this.processed = [];
+    }
+
     emit(data, { __sid__ = Observable.__sid__ ++, is = {}, rid = -1 } = {}) {
 
         if(!this.init && data !== keyF) {
@@ -108,15 +112,10 @@ export default class Observable {
 
         this.init = true;
 
-        /*<DEBUG TODO>*/
-        if(data === undefined) throw `attempt to emit 'undefined' data`;
-        //if(data.hasOwnProperty("name") && data.name === undefined) throw data;
-        /*</DEBUG>*/
+        /*<@>*/if(data === undefined) throw `attempt to emit 'undefined' data`;/*</@>*/
 
         if(data === keyF) {
-            this.processed.map( process => {
-                this.cutFromQueue(process);
-            } );
+            this.clearProcessed();
         }
 
         const evt = [data, {__sid__, is, rid }];
@@ -124,7 +123,9 @@ export default class Observable {
         const act = () => {
             if(data === keyF) this.queue.length = 0;
             this.queue.push(evt);
-            this.processed.splice( this.processed.findIndex(({act: x}) => x === act), 1 );
+            const cut = this.processed.findIndex(({act: x}) => x === act);
+            /*<@>*/if(cut < 0) throw `attempt to delete an event out of the processed queue`;/*</@>*/
+            this.processed.splice(cut, 1);
             this.obs.map(obs => obs( ...evt ));
         };
 
@@ -135,7 +136,9 @@ export default class Observable {
 
     cutFromQueue({act}) {
         const {queue} = Observable;
-        queue.splice(queue.findIndex(({act: x}) => x === act), 1);
+        const cut = queue.findIndex(({act: x}) => x === act);
+        /*<@>*/if(cut < 0) throw `attempt to delete an event out of the queue`;/*</@>*/
+        queue.splice(cut, 1);
     }
 
     /**
