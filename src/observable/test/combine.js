@@ -83,4 +83,26 @@ describe('combine', function () {
 
     });
 
+    it('loop', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(keyF),
+            evt => expect(evt).to.deep.equal(["b1", "b", "b"]),
+            evt => expect(evt).to.deep.equal(["b1", "b", "c"]),
+            evt => expect(evt).to.deep.equal(["c1", "b", "c"]),
+        ]);
+
+        const source = stream(function (emt) {
+            emt("a");
+            emt("b");
+            emt("c");
+        });
+
+        const a = source.map( evt => evt + "1");
+        const b = source.filter( evt => evt === "b");
+
+        combine([a, b, source] ).on( done );
+
+    });
+
 });
