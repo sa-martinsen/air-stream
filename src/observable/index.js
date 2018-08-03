@@ -13,6 +13,8 @@ export const keyF = freeze({ keyF: "keyF" });
 export const keyA = freeze({ keyA: "keyA" });
 export const empty = freeze({ empty: "empty" });
 
+const sorter = ({__sid__: a, idx: ax}, {__sid__: b, idx: bx}) => a !== b ? a - b : ax - bx;
+
 export default class Observable {
 
     constructor(emitter) {
@@ -151,9 +153,7 @@ export default class Observable {
             const queue = Observable.queue;
             setImmediate(() => {
                 while (queue.length) {
-                    Observable.dirtqueue && queue.sort(
-                        ({__sid__: a, idx: ax}, {__sid__: b, idx: bx}) => a !== b ? a - b : ax - bx
-                    );
+                    Observable.dirtqueue && queue.sort(sorter);
                     Observable.dirtqueue = false;
                     queue.shift().act();
                 }
