@@ -100,9 +100,7 @@ export default class Observable {
     }
 
     clearProcessed() {
-        this.processed.map( process => {
-            this.cutFromQueue(process);
-        } );
+        this.processed.map( process => this.cutFromQueue(process) );
         this.processed = [];
     }
 
