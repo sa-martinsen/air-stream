@@ -265,8 +265,9 @@ export default class Observable {
                     subs !== over && over({dissolve: true});
                 }
                 else {
-                    const res = handler(args, emt, value);
+                    const res = handler({dissolve: false, ...args}, emt, value);
                     res && over(res);
+                    subs !== over && subs({dissolve: false, ...args}, emt, value);
                 }
             }
         });
