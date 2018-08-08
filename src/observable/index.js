@@ -246,17 +246,23 @@ export default class Observable {
         } );
     }
 
-    controller( handler ) {
+    controller( stream, handler = x => x ) {
+        if(typeof stream === "function") {
+            handler = stream;
+            stream = null;
+        }
         return new Observable( emt => {
             let value;
-            const over = this.on((...args) => {
+            const subs = this.on((...args) => {
                 value = args[0];
                 emt(...args);
             });
+            const over = stream ? stream.on(() => {}) : subs;
             return ({dissolve, ...args}) => {
                 if(dissolve) {
                     value = undefined;
-                    over();
+                    subs({dissolve: true});
+                    subs !== over && over({dissolve: true});
                 }
                 else {
                     const res = handler(args, emt, value);

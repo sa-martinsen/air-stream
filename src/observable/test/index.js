@@ -7,9 +7,9 @@ import "./combine"
 import "./first"
 import "./merge"
 import "./complicated"
+import "./controller"
 
 /*
 import "./simple"
 import "./withlatestfrom"
-import "./combine"
 */
