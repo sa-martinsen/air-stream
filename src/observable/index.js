@@ -13,6 +13,8 @@ export const keyF = freeze({ keyF: "keyF" });
 export const keyA = freeze({ keyA: "keyA" });
 export const empty = freeze({ empty: "empty" });
 
+const sorter = ({__sid__: a, idx: ax}, {__sid__: b, idx: bx}) => a !== b ? a - b : ax - bx;
+
 export default class Observable {
 
     constructor(emitter) {
@@ -24,7 +26,7 @@ export default class Observable {
     }
 
     on(obs) {
-        /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function` /*</@>*/
+        /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function`; /*</@>*/
         if(!this.obs.length) {
             const emt = (evt, src) => this.emit(evt, src);
             emt.emit = emt;
@@ -36,16 +38,13 @@ export default class Observable {
         this.obs.push(obs);
         return ( { dissolve = false, ... args } = { dissolve: true } ) => {
             if(dissolve) {
-                const deleted = this.obs.indexOf(obs);
-                if(deleted < 0) throw "observable not in queue";
-                this.obs.splice(deleted, 1);
+                const cut = this.obs.indexOf(obs);
+                /*<@>*/if(cut < 0) throw `attempt to delete an observer out of the container`;/*</@>*/
+                this.obs.splice(cut, 1);
                 if(!this.obs.length) {
                     this.init = false;
                     this.queue = [];
-                    this.processed.map( process => {
-                        this.cutFromQueue(process);
-                    } );
-                    this.processed = [];
+                    this.clearProcessed();
                 }
                 if(this._disconnect) {
                     if(!this.obs.length) {
@@ -100,6 +99,11 @@ export default class Observable {
         return this.on( (...args) => !keys.includes(args[0]) && obs(...args) );
     }
 
+    clearProcessed() {
+        this.processed.map( process => this.cutFromQueue(process) );
+        this.processed = [];
+    }
+
     emit(data, { __sid__ = Observable.__sid__ ++, is = {}, rid = -1 } = {}) {
 
         if(!this.init && data !== keyF) {
@@ -108,15 +112,10 @@ export default class Observable {
 
         this.init = true;
 
-        /*<DEBUG TODO>*/
-        if(data === undefined) throw `attempt to emit 'undefined' data`;
-        //if(data.hasOwnProperty("name") && data.name === undefined) throw data;
-        /*</DEBUG>*/
+        /*<@>*/if(data === undefined) throw `attempt to emit 'undefined' data`;/*</@>*/
 
         if(data === keyF) {
-            this.processed.map( process => {
-                this.cutFromQueue(process);
-            } );
+            this.clearProcessed();
         }
 
         const evt = [data, {__sid__, is, rid }];
@@ -124,7 +123,9 @@ export default class Observable {
         const act = () => {
             if(data === keyF) this.queue.length = 0;
             this.queue.push(evt);
-            this.processed.splice( this.processed.findIndex(({act: x}) => x === act), 1 );
+            const cut = this.processed.findIndex(({act: x}) => x === act);
+            /*<@>*/if(cut < 0) throw `attempt to delete an event out of the processed queue`;/*</@>*/
+            this.processed.splice(cut, 1);
             this.obs.map(obs => obs( ...evt ));
         };
 
@@ -135,7 +136,9 @@ export default class Observable {
 
     cutFromQueue({act}) {
         const {queue} = Observable;
-        queue.splice(queue.findIndex(({act: x}) => x === act), 1);
+        const cut = queue.findIndex(({act: x}) => x === act);
+        /*<@>*/if(cut < 0) throw `attempt to delete an event out of the queue`;/*</@>*/
+        queue.splice(cut, 1);
     }
 
     /**
@@ -148,9 +151,7 @@ export default class Observable {
             const queue = Observable.queue;
             setImmediate(() => {
                 while (queue.length) {
-                    Observable.dirtqueue && queue.sort(
-                        ({__sid__: a, idx: ax}, {__sid__: b, idx: bx}) => a !== b ? a - b : ax - bx
-                    );
+                    Observable.dirtqueue && queue.sort(sorter);
                     Observable.dirtqueue = false;
                     queue.shift().act();
                 }
@@ -158,8 +159,42 @@ export default class Observable {
                 Observable.idx = 0;
             });
         }
-        Observable.queue.push({act, __sid__, idx: Observable.idx++});
-        Observable.dirtqueue = true;
+        const cur = {act, __sid__, idx: Observable.idx++};
+        const { queue } = Observable;
+        if(!Observable.dirtqueue) {
+            const count = queue.length;
+            if(count) {
+                const last = queue.slice(-1)[0];
+                if(sorter(cur, last) > 0) {
+                    queue.push(cur);
+                }
+                else if(count > 1) {
+                    const first = queue[0];
+                    const second = queue[1];
+                    if( sorter(cur, first) < 0 ) {
+                        queue.unshift(cur);
+                    }
+                    else {
+                        if( sorter(cur, second) < 0 ) {
+                            queue.splice(1, 0, cur);
+                        }
+                        else {
+                            queue.push(cur);
+                            Observable.dirtqueue = true;
+                        }
+                    }
+                }
+                else {
+                    queue.unshift(cur);
+                }
+            }
+            else {
+                queue.push(cur);
+            }
+        }
+        else {
+            queue.push(cur);
+        }
     }
 
     connected() {
@@ -245,21 +280,28 @@ export default class Observable {
         } );
     }
 
-    controller( handler ) {
+    controller( stream, handler = x => x ) {
+        if(typeof stream === "function") {
+            handler = stream;
+            stream = null;
+        }
         return new Observable( emt => {
             let value;
-            const over = this.on((...args) => {
+            const subs = this.on((...args) => {
                 value = args[0];
                 emt(...args);
             });
+            const over = stream ? stream.on(() => {}) : subs;
             return ({dissolve, ...args}) => {
                 if(dissolve) {
                     value = undefined;
-                    over();
+                    subs({dissolve: true});
+                    subs !== over && over({dissolve: true});
                 }
                 else {
-                    const res = handler(args, emt, value);
+                    const res = handler({dissolve: false, ...args}, emt, value);
                     res && over(res);
+                    subs !== over && subs({dissolve: false, ...args}, emt, value);
                 }
             }
         });
