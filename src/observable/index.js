@@ -159,8 +159,42 @@ export default class Observable {
                 Observable.idx = 0;
             });
         }
-        Observable.queue.push({act, __sid__, idx: Observable.idx++});
-        Observable.dirtqueue = true;
+        const cur = {act, __sid__, idx: Observable.idx++};
+        const { queue } = Observable;
+        if(!Observable.dirtqueue) {
+            const count = queue.length;
+            if(count) {
+                const last = queue.slice(-1)[0];
+                if(sorter(cur, last) > 0) {
+                    queue.push(cur);
+                }
+                else if(count > 1) {
+                    const first = queue[0];
+                    const second = queue[1];
+                    if( sorter(cur, first) < 0 ) {
+                        queue.unshift(cur);
+                    }
+                    else {
+                        if( sorter(cur, second) < 0 ) {
+                            queue.splice(1, 0, cur);
+                        }
+                        else {
+                            queue.push(cur);
+                            Observable.dirtqueue = true;
+                        }
+                    }
+                }
+                else {
+                    queue.unshift(cur);
+                }
+            }
+            else {
+                queue.push(cur);
+            }
+        }
+        else {
+            queue.push(cur);
+        }
     }
 
     connected() {
