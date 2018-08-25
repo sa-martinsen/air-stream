@@ -45,13 +45,13 @@ Modifies the source stream by selecting messages from it according to the condit
 source.filter( data => data > 1 );
 ```
 
-## combine
+## combine \[static\]
 
 Combines several threads into one
 
 
 ```js
-source.combine( [ source1, source1 ], (...events) => events );
+combine( [ source1, source2 ], (...events) => events );
 ```
 
 ## withHandler
