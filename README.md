@@ -159,6 +159,3 @@ source.log( (evt/*, src*/) => evt )
 ```
 
 returns unchanged stream
-
-## distinct
-
