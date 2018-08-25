@@ -53,7 +53,7 @@ Combines several threads into one
 ```js
 import { combine } from "air-stream"
 
-combine( [ source1, source2 ], (...events) => events );
+combine( [ source1/*[, ...]*/ ], (...events) => events );
 ```
 
 ## withHandler
