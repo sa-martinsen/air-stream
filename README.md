@@ -27,6 +27,30 @@ const newStream = stream( (emt, { over/*, hook, sweep*/ }) => {
 } );
 ```
 
+## at
+
+subscribes to stream
+
+```js
+const controller = source.at( data => {
+    console.log(data);
+});
+```
+
+,where "controller" is a feedback function
+
+call the controller without arguments to unsubscribe from the stream
+
+```js
+controller();
+```
+
+and with arguments to feedback 
+
+```js
+controller( { action: "touch" } );
+```
+
 ## map
 
 Modifies the source stream message to message
@@ -34,6 +58,14 @@ Modifies the source stream message to message
 
 ```js
 source.map( data => data+1 );
+```
+
+##cut
+
+Applies the transformation function to the data and emits the modified version if it is not undefined
+
+```js
+source.cut( ({ counter }) => counter );
 ```
 
 ## filter
@@ -90,6 +122,17 @@ source.controller( ({ dissolve, ...data }, emt, /*lastmsg*/) => {
 } );
 ```
 
+## distinct
+Compares each message with the last and emits it if it differs
+
+- equals - {Function} (optional) - function for comparing values
+
+```js
+source.distinct( (prev, cur) => {
+    return prev !== cur;
+} );
+```
+
 Modifies the feedback for additional stream
 ```js
 source.controller( additionalSource, ({ dissolve, ...data }, emt, /*lastmsg*/) => {
@@ -105,3 +148,17 @@ source.controller( additionalSource, ({ dissolve, ...data }, emt, /*lastmsg*/) =
 ```
 
 for the main source, the call remains unchanged
+
+## log
+
+Logs messages from the stream
+- adapter {Function} ( optional ) - formatting output
+
+```js
+source.log( (evt/*, src*/) => evt )
+```
+
+returns unchanged stream
+
+## distinct
+
