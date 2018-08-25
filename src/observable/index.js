@@ -401,6 +401,30 @@ export default class Observable {
         );
     }
 
+    distinct( equal = (a, b) => a === b ) {
+        let prev = null;
+        return new Observable( emt =>
+            this.on( (evt, src) => {
+                if(evt === keyF) {
+                    prev = keyF;
+                }
+                if(!keys.includes(evt)) {
+                    if(prev === keyF) {
+                        emt(prev = evt, src);
+                    }
+                    else {
+                        if(!equal(prev, evt)) {
+                            emt(prev = evt, src);
+                        }
+                    }
+                }
+                else {
+                    emt(evt, src);
+                }
+            })
+        );
+    }
+
     cut( project ) {
         return this.withHandler( (emt, evt) => {
             const data = project(evt);
