@@ -1,7 +1,7 @@
 {
   "name": "air-stream",
   "version": "0.5.20",
-  "module": "src/index.js",
+  "module": "src/index.mjs",
   "scripts": {
     "start": "node run.js",
     "dev": "webpack --config=webpack.dev.config.js",

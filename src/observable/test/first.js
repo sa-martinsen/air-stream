@@ -1,6 +1,6 @@
 import {expect} from "chai";
 import {describe, it} from "mocha";
-import Observable from "../index";
+import Observable from "../index.mjs";
 import {series} from "./utils";
 
 describe('first', function () {
