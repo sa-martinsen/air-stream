@@ -24,7 +24,7 @@ export default creator =>
         };
 
         request.exec = ({ request, ...args } = {}) => {
-            if(requester.hasOwnProperty(args.request)) {
+            if(requester.hasOwnProperty(request)) {
                 requester[request].map(k=>k({ ...args, dissolve: false }));
             }
         };
