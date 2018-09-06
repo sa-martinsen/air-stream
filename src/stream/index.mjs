@@ -29,19 +29,30 @@ export default creator =>
             }
         };
 
+        request.force = ( request ) => {
+            Object.keys(requester)
+                .map( type => requester[type] )
+                .some( req => {
+                    let index;
+                    if(index = req.indexOf(request) > -1) {
+                        return req.splice(index, 1);
+                    }
+                } )
+        };
+
         const res = creator( emt, { sweep, hook, over, request } );
         if(typeof res === "function") sweep.add( res );
-        return ({dissolve = false, ...args} = {dissolve: true}) => {
+        return ({dissolve = false, action = null, request = action, ...args} = {dissolve: true}) => {
             if(dissolve) {
                 requester.dissolve.map(k => k( { dissolve: true } ));
                 sweep.use( { dissolve } );
             }
             else {
-                if(args.hasOwnProperty("request") && requester.hasOwnProperty(args.request)) {
-                    requester[args.request].map(k=>k({ ...args, dissolve }));
+                if(request && requester.hasOwnProperty(request)) {
+                    requester[request].map(k=>k({ ...args, request, dissolve }));
                 }
-                hook.use( { dissolve, ...args });
+                hook.use( { action, dissolve, ...args });
             }
-            over.use( { dissolve, ...args });
+            over.use( { request, action, dissolve, ...args });
         }
     } );
