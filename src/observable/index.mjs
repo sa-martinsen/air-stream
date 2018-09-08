@@ -263,6 +263,48 @@ export default class Observable {
         } );
     }
 
+    reducer(project) {
+
+        //if src stream emits kf - self emts kf
+        //if src stream emits first evt after kf - self emts evt
+        //if src stream emits n evt - self emit project(acc + evt)
+        //if src stream emits cancel evt - self renew the stream
+        //if src stream emits confirm evt - self idle
+
+        return new Observable( emt  => {
+            let acc = empty;
+            let history = [];
+            return this.on( (evt, src) => {
+                if(evt === keyF) {
+                    acc = empty;
+                    history = [ [ keyF, src ] ];
+                    emt(evt, src);
+                }
+                else if(evt === keyA) {
+                    if(src.is.abort) {
+                        const canceled = history.findIndex( ([, {rid}]) => rid === src.rid );
+                        if(canceled > -1) {
+                            history.splice(canceled, 1);
+                            acc = history[1][0];
+                            emt(...history[0]);
+                            emt(...history[1]);
+                            history.slice(2).map( ([evt, src]) => emt(acc = project( acc, evt, src ), src) );
+                        }
+                    }
+                }
+                else if(acc === empty) {
+                    acc = evt;
+                    history.push([acc, src]);
+                    emt(acc, src);
+                }
+                else {
+                    history.push([evt, src]);
+                    emt(acc = project( acc, evt, src ), src);
+                }
+            } );
+        } );
+    }
+
     reduce(project) {
         return new Observable( emt => {
             let acc = empty;
@@ -473,3 +515,5 @@ Observable.keyA = keyA;
 const keys = Observable.keys = [ keyF, keyA ];
 export const merge = Observable.merge;
 export const combine = Observable.combine;
+export const rid = () => __rid++;
+let __rid = 1;
