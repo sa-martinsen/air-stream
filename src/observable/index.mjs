@@ -106,7 +106,14 @@ export default class Observable {
         this.processed = [];
     }
 
-    emit(data, { __sid__ = Observable.__sid__ ++, is = {}, rid = -1 } = {}) {
+    emit(data, { __sid__ = -1, is = {}, rid = -1 } = {}) {
+
+        let forcelast = false;
+
+        if(__sid__ === -1) {
+            __sid__ = SID ++ ;
+            forcelast = true;
+        }
 
         if(!this.init && data !== keyF) {
             this.emit(keyF, { __sid__ });
@@ -133,7 +140,7 @@ export default class Observable {
 
         const process = { act, __sid__ };
         this.processed.push(process);
-        this.pushToQueue(process);
+        this.pushToQueue(process, forcelast);
     }
 
     cutFromQueue({act}) {
@@ -143,17 +150,15 @@ export default class Observable {
         queue.splice(cut, 1);
     }
 
-    /**
-     * @param act
-     * @param sid
-     */
-    pushToQueue({act, __sid__}) {
+    pushToQueue({act, __sid__}, forcelast) {
         if(!Observable.queue) {
             Observable.queue = [];
             const queue = Observable.queue;
             setImmediate(() => {
                 while (queue.length) {
-                    Observable.dirtqueue && queue.sort(sorter);
+                    if(Observable.dirtqueue) {
+                        queue.sort(sorter);
+                    }
                     Observable.dirtqueue = false;
                     queue.shift().act();
                 }
@@ -163,7 +168,10 @@ export default class Observable {
         }
         const cur = {act, __sid__, idx: Observable.idx++};
         const { queue } = Observable;
-        if(!Observable.dirtqueue) {
+        if(forcelast) {
+            queue.push(cur);
+        }
+        else if(!Observable.dirtqueue) {
             const count = queue.length;
             if(count) {
                 const last = queue.slice(-1)[0];
@@ -243,6 +251,18 @@ export default class Observable {
             tails.push(this.on( check ));
             return (...args) => tails.map( tail => tail(...args) );
         } );
+    }
+
+    ready() {
+        let ready = false;
+        return new Observable( emt =>
+            this.at( (evt, src) => {
+                if(!ready) {
+                    ready = true;
+                    emt( evt, src );
+                }
+            })
+        );
     }
 
     first() {
@@ -508,7 +528,7 @@ export default class Observable {
 
 }
 
-Observable.__sid__ = 0;
+let SID = 0;
 Observable.idx = 0;
 Observable.keyF = keyF;
 Observable.keyA = keyA;

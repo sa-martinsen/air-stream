@@ -1,4 +1,4 @@
-import chaiSubset from 'chai-subset';
+import chaiSubset from 'chai-subset'
 import chai from "chai"
 chai.use(chaiSubset);
 
