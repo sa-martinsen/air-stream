@@ -355,7 +355,7 @@ export default class Observable {
                 } ) ),
 
             ]
-         );
+        );
     }
 
     static project(...args) { return args; }
@@ -374,8 +374,8 @@ export default class Observable {
                     const _events = events.map( evt => evt.slice(-1)[0][0] );
                     _events.splice( observables.indexOf(obs), 1, evt );
 
-                    if(_events.some(evt => evt === keyF)) {
-                        debugger;
+                    if(_events.some(({keyF}) => keyF)) {
+                        throw `may by a several instances of air-stream is loaded?`;
                     }
 
                     emt( project(..._events), src );
