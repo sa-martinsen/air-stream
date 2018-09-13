@@ -3,7 +3,7 @@ import Observable, {keyA, keyF} from "../index.mjs";
 import {series} from "./utils"
 
 describe('reducer', function () {
-
+/*
     it('simple1', (done) => {
 
         done = series(done, [
@@ -28,7 +28,7 @@ describe('reducer', function () {
             } )
             .on( done );
 
-    });
+    });*/
 
     it('abort action', (done) => {
 
@@ -54,7 +54,7 @@ describe('reducer', function () {
             setTimeout(() => {
                 emt(keyA, { is: { abort: true }, rid: 1 });
                 emt(4, { rid: 4 });
-            }, 10);
+            });
         } );
 
         source
@@ -63,7 +63,7 @@ describe('reducer', function () {
             } )
             .on( done );
 
-    });
+    });/*
 
     it('refresh history', (done) => {
 
@@ -87,6 +87,6 @@ describe('reducer', function () {
             } )
             .on( done );
 
-    });
+    });*/
 
 });
