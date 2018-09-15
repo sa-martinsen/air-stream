@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import Observable from "../index";
+import Observable from "../index.mjs";
 
 describe('withLatestFrom', function () {
 

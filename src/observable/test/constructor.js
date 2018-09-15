@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import Observable from "../index";
+import Observable from "../index.mjs";
 import {series} from "./utils"
 import {describe, it} from "mocha";
 

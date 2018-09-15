@@ -1,5 +1,5 @@
 import {describe, it} from "mocha"
-import { merge, stream, keyF } from "../../"
+import { merge, stream, keyF } from "../../index.mjs"
 import {expect} from "chai"
 import {series} from "./utils"
 

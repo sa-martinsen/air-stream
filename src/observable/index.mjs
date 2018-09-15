@@ -1,3 +1,6 @@
+import Queue from "./queue.mjs";
+import Stack from "./stack.mjs"
+
 /**
  * reinit можно отправлять несолкьо раз, и он теперь не обновляет очередь,
  * для полного обновления нужно сделать полный реистанс модели
@@ -7,13 +10,14 @@
  * сохранность $SID должна гарантироваться извне
  */
 
+const stacks = [];
+const QUEUE = new Queue();
+
 const { freeze } = Object;
 
 export const keyF = freeze({ keyF: "keyF" });
 export const keyA = freeze({ keyA: "keyA" });
 export const empty = freeze({ empty: "empty" });
-
-const sorter = ({__sid__: a, idx: ax}, {__sid__: b, idx: bx}) => a !== b ? a - b : ax - bx;
 
 export default class Observable {
 
@@ -100,11 +104,15 @@ export default class Observable {
     }
 
     clearProcessed() {
-        this.processed.map( process => this.cutFromQueue(process) );
-        this.processed = [];
+        this.processed.map( ({ stack, act }) => {
+            stack.cuts(act)
+        } );
+        this.processed.length = 0;
     }
 
-    emit(data, { __sid__ = Observable.__sid__ ++, is = {}, rid = -1 } = {}) {
+    emit(data, { __sid__ = stacks.length, is = {}, rid = -1 } = {}) {
+
+        const stack = stacks[__sid__] || (stacks[__sid__] = new Stack({__sid__, queue: QUEUE }));
 
         if(!this.init && data !== keyF) {
             this.emit(keyF, { __sid__ });
@@ -129,72 +137,9 @@ export default class Observable {
             this.obs.map(obs => obs( ...evt ));
         };
 
-        const process = { act, __sid__ };
-        this.processed.push(process);
-        this.pushToQueue(process);
-    }
+        this.processed.push({ act, stack });
+        stack.push(act);
 
-    cutFromQueue({act}) {
-        const {queue} = Observable;
-        const cut = queue.findIndex(({act: x}) => x === act);
-        /*<@>*/if(cut < 0) throw `attempt to delete an event out of the queue`;/*</@>*/
-        queue.splice(cut, 1);
-    }
-
-    /**
-     * @param act
-     * @param sid
-     */
-    pushToQueue({act, __sid__}) {
-        if(!Observable.queue) {
-            Observable.queue = [];
-            const queue = Observable.queue;
-            setImmediate(() => {
-                while (queue.length) {
-                    Observable.dirtqueue && queue.sort(sorter);
-                    Observable.dirtqueue = false;
-                    queue.shift().act();
-                }
-                Observable.queue = null;
-                Observable.idx = 0;
-            });
-        }
-        const cur = {act, __sid__, idx: Observable.idx++};
-        const { queue } = Observable;
-        if(!Observable.dirtqueue) {
-            const count = queue.length;
-            if(count) {
-                const last = queue.slice(-1)[0];
-                if(sorter(cur, last) > 0) {
-                    queue.push(cur);
-                }
-                else if(count > 1) {
-                    const first = queue[0];
-                    const second = queue[1];
-                    if( sorter(cur, first) < 0 ) {
-                        queue.unshift(cur);
-                    }
-                    else {
-                        if( sorter(cur, second) < 0 ) {
-                            queue.splice(1, 0, cur);
-                        }
-                        else {
-                            queue.push(cur);
-                            Observable.dirtqueue = true;
-                        }
-                    }
-                }
-                else {
-                    queue.unshift(cur);
-                }
-            }
-            else {
-                queue.push(cur);
-            }
-        }
-        else {
-            queue.push(cur);
-        }
     }
 
     connected() {
@@ -243,6 +188,18 @@ export default class Observable {
         } );
     }
 
+    ready() {
+        let ready = false;
+        return new Observable( emt =>
+            this.at( (evt, src) => {
+                if(!ready) {
+                    ready = true;
+                    emt( evt, src );
+                }
+            })
+        );
+    }
+
     first() {
         return new Observable( emt => this.on( (evt, src) => this.queue.length === 2 && emt(evt, src) ) );
     }
@@ -258,6 +215,48 @@ export default class Observable {
                 current && current(...args);
                 sub && sub(...args);
             }
+        } );
+    }
+
+    reducer(project) {
+
+        //if src stream emits kf - self emts kf
+        //if src stream emits first evt after kf - self emts evt
+        //if src stream emits n evt - self emit project(acc + evt)
+        //if src stream emits cancel evt - self renew the stream
+        //if src stream emits confirm evt - self idle
+
+        return new Observable( emt  => {
+            let acc = empty;
+            let history = [];
+            return this.on( (evt, src) => {
+                if(evt === keyF) {
+                    acc = empty;
+                    history = [ [ keyF, src ] ];
+                    emt(evt, src);
+                }
+                else if(evt === keyA) {
+                    if(src.is.abort) {
+                        const canceled = history.findIndex( ([, {rid}]) => rid === src.rid );
+                        if(canceled > -1) {
+                            history.splice(canceled, 1);
+                            acc = history[1][0];
+                            emt(...history[0]);
+                            emt(...history[1]);
+                            history.slice(2).map( ([evt, src]) => emt(acc = project( acc, evt, src ), src) );
+                        }
+                    }
+                }
+                else if(acc === empty) {
+                    acc = evt;
+                    history.push([acc, src]);
+                    emt(acc, src);
+                }
+                else {
+                    history.push([evt, src]);
+                    emt(acc = project( acc, evt, src ), src);
+                }
+            } );
         } );
     }
 
@@ -356,7 +355,7 @@ export default class Observable {
                 } ) ),
 
             ]
-         );
+        );
     }
 
     static project(...args) { return args; }
@@ -375,8 +374,8 @@ export default class Observable {
                     const _events = events.map( evt => evt.slice(-1)[0][0] );
                     _events.splice( observables.indexOf(obs), 1, evt );
 
-                    if(_events.some(evt => evt === keyF)) {
-                        debugger;
+                    if(_events.some(({keyF}) => keyF)) {
+                        throw `may by a several instances of air-stream is loaded?`;
                     }
 
                     emt( project(..._events), src );
@@ -464,10 +463,12 @@ export default class Observable {
 
 }
 
-Observable.__sid__ = 0;
+let SID = 0;
 Observable.idx = 0;
 Observable.keyF = keyF;
 Observable.keyA = keyA;
 const keys = Observable.keys = [ keyF, keyA ];
 export const merge = Observable.merge;
 export const combine = Observable.combine;
+export const rid = () => __rid++;
+let __rid = 1;
