@@ -237,6 +237,7 @@ export default class Observable {
                 }
                 else if(evt === keyA) {
                     if(src.is.abort) {
+                        if(src.rid === -1) throw `requires request "rid" for cancellation`;
                         const canceled = history.findIndex( ([, {rid}]) => rid === src.rid );
                         if(canceled > -1) {
                             history.splice(canceled, 1);
