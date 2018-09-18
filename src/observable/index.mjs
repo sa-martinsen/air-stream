@@ -241,21 +241,21 @@ export default class Observable {
                         const canceled = history.findIndex( ([, {rid}]) => rid === src.rid );
                         if(canceled > -1) {
                             history.splice(canceled, 1);
-                            acc = history[1][0];
                             emt(...history[0]);
-                            emt(...history[1]);
-                            history.slice(2).map( ([evt, src]) => emt(acc = project( acc, evt, src ), src) );
+                            emt(...acc = history.slice(1).reduce(
+                                ([acc], [evt, src]) => [ project(acc, evt, src), src ]
+                            ));
                         }
                     }
                 }
                 else if(acc === empty) {
-                    acc = evt;
-                    history.push([acc, src]);
-                    emt(acc, src);
+                    acc = [evt, src];
+                    history.push(acc);
+                    emt(...acc);
                 }
                 else {
                     history.push([evt, src]);
-                    emt(acc = project( acc, evt, src ), src);
+                    emt(...acc = [project( acc[0], evt, src ), src]);
                 }
             } );
         } );
