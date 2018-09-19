@@ -27,16 +27,19 @@ export default class Observable {
         this.queue = [];
         this.processed = [];
         this.init = false;
+
+        const emt = (evt, src) => this.emit(evt, src);
+        emt.emit = emt;
+        emt.emt = emt;
+        emt.kf = () => this.emit(keyF);
+        this.emt = emt;
+
     }
 
     on(obs) {
         /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function`; /*</@>*/
         if(!this.obs.length) {
-            const emt = (evt, src) => this.emit(evt, src);
-            emt.emit = emt;
-            emt.emt = emt;
-            emt.kf = () => this.emit(keyF);
-            this._disconnect = this.emitter(emt) || null;
+            this._disconnect = this.emitter(this.emt) || null;
         }
         this.queue.map( evt => obs(...evt) );
         this.obs.push(obs);
@@ -47,7 +50,7 @@ export default class Observable {
                 this.obs.splice(cut, 1);
                 if(!this.obs.length) {
                     this.init = false;
-                    this.queue = [];
+                    this.queue.length = 0;
                     this.clearProcessed();
                 }
                 if(this._disconnect) {
