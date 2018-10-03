@@ -244,10 +244,11 @@ export default class Observable {
                         const canceled = history.findIndex( ([, {rid}]) => rid === src.rid );
                         if(canceled > -1) {
                             history.splice(canceled, 1);
-                            emt(...history[0]);
-                            emt(...acc = history.slice(1).reduce(
+                            emt(history[0][0], { ...history[0][1], rid: -1 });
+                            acc = history.slice(1).reduce(
                                 ([acc], [evt, src]) => [ project(acc, evt, src), src ]
-                            ));
+                            );
+                            emt(acc[0], { ...acc[1], rid: -1 });
                         }
                     }
                 }
