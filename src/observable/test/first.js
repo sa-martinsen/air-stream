@@ -1,7 +1,7 @@
-import {expect} from "chai";
-import {describe, it} from "mocha";
-import Observable from "../index.mjs";
-import {series} from "./utils";
+import {expect} from "chai"
+import {describe, it} from "mocha"
+import Observable from "../index.mjs"
+import {series} from "./../../utils.mjs"
 
 describe('first', function () {
 

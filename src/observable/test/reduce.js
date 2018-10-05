@@ -1,6 +1,6 @@
 import {expect} from "chai";
 import Observable from "../index.mjs";
-import {series} from "./utils"
+import {series} from "./../../utils.mjs"
 
 describe('reduce', function () {
 

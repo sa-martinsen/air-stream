@@ -1,4 +1,4 @@
-import Queue from "./queue.mjs";
+import Queue from "./queue.mjs"
 import Stack from "./stack.mjs"
 
 /**

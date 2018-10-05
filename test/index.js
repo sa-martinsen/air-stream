@@ -6,3 +6,4 @@ chai.use(chaiSubset);
 console.log('\x1Bc');
 
 import "../src/observable/test/index.mjs"
+import "../src/socket/test/index.mjs"
