@@ -195,12 +195,17 @@ export default class Observable {
         return new Observable( emt => {
             const tails = [];
             function check(evt, src) {
+
+                if(evt === keyF) {
+                    return emt(evt, src);
+                }
+
                 const mess = observables.map(obs => {
-                    const last = obs.queue.length && obs.queue.slice(-1)[0];
-                    return last && last.__sid__ <= src.__sid__ ? last : null
+                    const last = obs.queue.length > 1 && obs.queue.slice(-1)[0];
+                    return last && last[1].__sid__ <= src.__sid__ ? last[0] : null
                 });
                 if(mess.every(msg => msg)) {
-                    emt({...project(evt, ...mess)}, src);
+                    emt([...project(evt, ...mess)], src);
                 }
             }
             //если изменение из пассивов
