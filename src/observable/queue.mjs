@@ -1,4 +1,4 @@
-import setImmediate from "../set_immediate.mjs";
+import setImmediate from "../set_immediate.mjs"
 
 export default class Queue {
 

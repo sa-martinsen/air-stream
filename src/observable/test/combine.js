@@ -1,5 +1,5 @@
 import {expect} from "chai"
-import {series} from "./utils.js"
+import {series} from "../../utils.mjs"
 import { combine, stream, keyF } from "../../index.mjs"
 
 describe('combine', function () {

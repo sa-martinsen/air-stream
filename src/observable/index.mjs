@@ -1,4 +1,4 @@
-import Queue from "./queue.mjs";
+import Queue from "./queue.mjs"
 import Stack from "./stack.mjs"
 
 /**
@@ -27,16 +27,19 @@ export default class Observable {
         this.queue = [];
         this.processed = [];
         this.init = false;
+
+        const emt = (evt, src) => this.emit(evt, src);
+        emt.emit = emt;
+        emt.emt = emt;
+        emt.kf = () => this.emit(keyF);
+        this.emt = emt;
+
     }
 
     on(obs) {
         /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function`; /*</@>*/
         if(!this.obs.length) {
-            const emt = (evt, src) => this.emit(evt, src);
-            emt.emit = emt;
-            emt.emt = emt;
-            emt.kf = () => this.emit(keyF);
-            this._disconnect = this.emitter(emt) || null;
+            this._disconnect = this.emitter(this.emt) || null;
         }
         this.queue.map( evt => obs(...evt) );
         this.obs.push(obs);
@@ -47,7 +50,7 @@ export default class Observable {
                 this.obs.splice(cut, 1);
                 if(!this.obs.length) {
                     this.init = false;
-                    this.queue = [];
+                    this.queue.length = 0;
                     this.clearProcessed();
                 }
                 if(this._disconnect) {
@@ -188,6 +191,37 @@ export default class Observable {
         } );
     }
 
+    withLatest(observables = [], project = (...args) => args) {
+        return new Observable( emt => {
+            const tails = [];
+            function check(evt, src) {
+
+                if(evt === keyF) {
+                    return emt(evt, src);
+                }
+
+                const mess = observables.map(obs => {
+                    const last = obs.queue.length > 1 && obs.queue.slice(-1)[0];
+                    return last && last[1].__sid__ <= src.__sid__ ? last[0] : null
+                });
+                if(mess.every(msg => msg)) {
+                    emt([...project(evt, ...mess)], src);
+                }
+            }
+            //если изменение из пассивов
+            observables.forEach( obs => tails.push(obs.on( evt => {
+                //только если стволовой поток инициализирован
+                //и текущий поток еще не был задействован
+                if(this.queue.length && obs.queue.length === 1) {
+                    check(...this.queue.slice(-1)[0]);
+                }
+            })) );
+            //если изменение от источника событий
+            tails.push(this.on( check ));
+            return (...args) => tails.map( tail => tail(...args) );
+        } );
+    }
+
     ready() {
         let ready = false;
         return new Observable( emt =>
@@ -237,24 +271,26 @@ export default class Observable {
                 }
                 else if(evt === keyA) {
                     if(src.is.abort) {
+                        if(src.rid === -1) throw `requires request "rid" for cancellation`;
                         const canceled = history.findIndex( ([, {rid}]) => rid === src.rid );
                         if(canceled > -1) {
                             history.splice(canceled, 1);
-                            acc = history[1][0];
-                            emt(...history[0]);
-                            emt(...history[1]);
-                            history.slice(2).map( ([evt, src]) => emt(acc = project( acc, evt, src ), src) );
+                            emt(history[0][0], { ...history[0][1], rid: -1 });
+                            acc = history.slice(1).reduce(
+                                ([acc], [evt, src]) => [ project(acc, evt, src), src ]
+                            );
+                            emt(acc[0], { ...acc[1], rid: -1 });
                         }
                     }
                 }
                 else if(acc === empty) {
-                    acc = evt;
-                    history.push([acc, src]);
-                    emt(acc, src);
+                    acc = [evt, src];
+                    history.push(acc);
+                    emt(...acc);
                 }
                 else {
                     history.push([evt, src]);
-                    emt(acc = project( acc, evt, src ), src);
+                    emt(...acc = [project( acc[0], evt, src ), src]);
                 }
             } );
         } );

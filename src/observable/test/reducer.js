@@ -1,9 +1,9 @@
 import {expect} from "chai";
 import Observable, {keyA, keyF} from "../index.mjs";
-import {series} from "./utils"
+import {series} from "./../../utils.mjs"
 
 describe('reducer', function () {
-/*
+
     it('simple1', (done) => {
 
         done = series(done, [
@@ -28,7 +28,7 @@ describe('reducer', function () {
             } )
             .on( done );
 
-    });*/
+    });
 
     it('abort action', (done) => {
 
@@ -39,8 +39,6 @@ describe('reducer', function () {
             evt => expect(evt).to.deep.equal( 3 ),
             evt => expect(evt).to.deep.equal( 6 ),
             evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.deep.equal( 0 ),
-            evt => expect(evt).to.deep.equal( 2 ),
             evt => expect(evt).to.deep.equal( 5 ),
             evt => expect(evt).to.deep.equal( 9 ),
         ]);
@@ -54,7 +52,7 @@ describe('reducer', function () {
             setTimeout(() => {
                 emt(keyA, { is: { abort: true }, rid: 1 });
                 emt(4, { rid: 4 });
-            });
+            }, 0);
         } );
 
         source
@@ -63,8 +61,8 @@ describe('reducer', function () {
             } )
             .on( done );
 
-    });/*
-
+    });
+/*
     it('refresh history', (done) => {
 
         done = series(done, [

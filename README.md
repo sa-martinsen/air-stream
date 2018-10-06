@@ -1,6 +1,6 @@
 # air-stream
 
-## Constructor
+## constructor
 
 Creates a new stream
 
@@ -86,6 +86,15 @@ Combines several threads into one
 import { combine } from "air-stream"
 
 combine( [ source1/*[, ...]*/ ], (...events) => events );
+```
+
+## withLatest
+
+Combines several streams into one, but only triggers events from the source
+
+
+```js
+source.withLatest( [ source1, source2 ],  (...events) => events );
 ```
 
 ## withHandler

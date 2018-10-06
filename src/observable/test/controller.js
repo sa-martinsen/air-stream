@@ -1,5 +1,5 @@
 import {expect} from "chai"
-import {series} from "./utils.js"
+import {series} from "../../utils.mjs"
 import { stream } from "../../index.mjs"
 
 describe('controller', function () {
