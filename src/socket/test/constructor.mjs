@@ -22,7 +22,7 @@ global.WebSocket = class {
     }
 
     send(data) {
-        console.log("sended", data);
+        //console.log("sended", data);
     }
 
     get readyState() {
@@ -30,7 +30,7 @@ global.WebSocket = class {
     }
 
     close() {
-        console.log("close");
+        //console.log("close");
     }
 
     addEventListener(type, listener) {
@@ -54,7 +54,7 @@ describe('constructor', function () {
 
         const source = socket( { url: "wss://" } );
 
-        source.log().on(done);
+        source.on(done);
 
     });
 
