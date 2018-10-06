@@ -6,6 +6,7 @@ import { socket, keyF } from "../../index.mjs"
 global.WebSocket = class {
 
     constructor(url) {
+        console.log( "create" );
         this._readystate = 0;
         setTimeout(() => {
             this._readystate = 1;
@@ -26,6 +27,10 @@ global.WebSocket = class {
 
     get readyState() {
         return this._readystate;
+    }
+
+    close() {
+        console.log("close");
     }
 
     addEventListener(type, listener) {
@@ -49,7 +54,7 @@ describe('constructor', function () {
 
         const source = socket( { url: "wss://" } );
 
-        source.on(done);
+        source.log().on(done);
 
     });
 

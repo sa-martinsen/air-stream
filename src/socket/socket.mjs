@@ -1,15 +1,50 @@
 import {stream} from "../index.mjs"
 
-export default ( { url } ) =>
+export default ( { url, pingtms = 0, reconnecttms = 0 } ) =>
 
-    stream((emt, { hook }) => {
+    stream((emt, { over }) => {
 
         let pingpong = 0;
-        let pingintervalid;
+        let reconnecttimeout = null;
+        let pinginterval = null;
+        let socket = null;
 
-        hook.add( ({ request }) => {
-            socket.readyState === 1 && socket.send( request );
-        } );
+        function unsubscribe() {
+
+            if(reconnecttimeout) {
+                clearTimeout(reconnecttimeout);
+                reconnecttimeout = null;
+            }
+
+            if(socket) {
+                socket.removeEventListener("open", connection);
+                socket.removeEventListener("message", connection);
+                socket.removeEventListener("close", connection);
+                socket.close();
+                socket = null;
+            }
+
+            if(pinginterval) {
+                clearInterval(pinginterval);
+                pinginterval = null;
+            }
+
+        }
+
+        function reconnect() {
+
+            unsubscribe();
+
+            if(reconnecttms) {
+                reconnecttimeout = setTimeout(reconnect, reconnecttms);
+            }
+
+            socket = new WebSocket( url );
+            socket.addEventListener("open", connection);
+            socket.addEventListener("message", connection);
+            socket.addEventListener("close", connection);
+
+        }
 
         const connection = {
 
@@ -17,17 +52,22 @@ export default ( { url } ) =>
 
                 if (event.type === "open") {
                     emt.kf();
-                    pingpong = 0;
-                    pingintervalid = setInterval(() => {
-                        pingpong ++ ;
-                        if(pingpong > 1) {
-                            unsubscribe(socket, pingintervalid);
-                            socket = subscribe(url, connection);
-                        }
-                        else {
-                            socket.readyState === 1 && socket.send( "PING" );
-                        }
-                    }, 5000);
+                    if(reconnecttimeout) {
+                        clearTimeout(reconnecttimeout);
+                        reconnecttimeout = null;
+                    }
+                    if(pingtms) {
+                        pingpong = 0;
+                        pinginterval = setInterval(() => {
+                            pingpong++;
+                            if (pingpong > 1) {
+                                reconnect();
+                            }
+                            else {
+                                socket.readyState === 1 && socket.send("PING");
+                            }
+                        }, pingtms);
+                    }
                 }
 
                 else if (event.type === "close") {
@@ -35,11 +75,11 @@ export default ( { url } ) =>
                 }
 
                 else if (event.type === "message") {
-                    if(event.data === "PONG") {
-                        pingpong -- ;
+                    if (event.data === "PONG") {
+                        pingpong--;
                     }
                     else {
-                        emt( event.data );
+                        emt(event.data);
                     }
                 }
 
@@ -47,24 +87,13 @@ export default ( { url } ) =>
 
         };
 
-        let socket = subscribe(url, connection);
+        over.add( (dissolve, data) => {
+            if(!dissolve && socket.readyState === 1) {
+                socket.send(data);
+            }
+        } );
+        reconnect();
 
-        return () => unsubscribe(socket, pingintervalid);
+        return unsubscribe;
 
     })
-
-function unsubscribe(socket, pingintervalid) {
-    clearInterval(pingintervalid);
-    socket.removeEventListener("open", connection);
-    socket.removeEventListener("message", connection);
-    socket.removeEventListener("close", connection);
-    socket.close();
-}
-
-function subscribe(url, connection) {
-    let socket = new WebSocket(url);
-    socket.addEventListener("open", connection);
-    socket.addEventListener("message", connection);
-    socket.addEventListener("close", connection);
-    return socket;
-}
