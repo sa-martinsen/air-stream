@@ -89,7 +89,7 @@ export default ( { url, pingformat = "PING/PONG",  pingtms = 0, reconnecttms = 0
 
         };
 
-        over.add( ({ dissolve, data }) => {
+        over.add( (dissolve, data) => {
             if(!dissolve && socket.readyState === 1) {
                 socket.send(data);
             }
