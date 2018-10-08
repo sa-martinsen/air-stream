@@ -1,8 +1,10 @@
 # air-stream
 
-## constructor
+## subjects
 
-Creates a new stream
+### stream 
+
+creates a new simple stream
 
 ```js
 import { stream } from "air-stream"
@@ -27,7 +29,25 @@ const newStream = stream( (emt, { over/*, hook, sweep*/ }) => {
 } );
 ```
 
-## at
+### socket 
+
+creates a stream from WebSocket 
+
+```js
+import { socket } from "air-stream"
+
+const newStream = socket( ({ 
+    url, // wss://...
+    pingformat, // (default PING/PONG)
+    pingtms, // ( default 0 - not used )
+    reconnecttms, // ( default 0 - not used )
+}) );
+
+```
+
+## methods
+
+### at
 
 subscribes to stream
 
@@ -51,7 +71,7 @@ and with arguments to feedback
 controller( { action: "touch" } );
 ```
 
-## map
+### map
 
 Modifies the source stream message to message
 
@@ -60,7 +80,7 @@ Modifies the source stream message to message
 source.map( data => data+1 );
 ```
 
-##cut
+### cut
 
 Applies the transformation function to the data and emits the modified version if it is not undefined
 
@@ -68,7 +88,7 @@ Applies the transformation function to the data and emits the modified version i
 source.cut( ({ counter }) => counter );
 ```
 
-## filter
+### filter
 
 Modifies the source stream by selecting messages from it according to the condition
 
@@ -77,7 +97,7 @@ Modifies the source stream by selecting messages from it according to the condit
 source.filter( data => data > 1 );
 ```
 
-## combine \[static\]
+### combine \[static\]
 
 Combines several threads into one
 
@@ -88,7 +108,7 @@ import { combine } from "air-stream"
 combine( [ source1/*[, ...]*/ ], (...events) => events );
 ```
 
-## withLatest
+### withLatest
 
 Combines several streams into one, but only triggers events from the source
 
@@ -97,7 +117,7 @@ Combines several streams into one, but only triggers events from the source
 source.withLatest( [ source1, source2 ],  (...events) => events );
 ```
 
-## withHandler
+### withHandler
 
 The general method of changing the stream
 
@@ -114,7 +134,7 @@ source.withHandler( (emt, data) => {
 } );
 ```
 
-## controller
+### controller
 
 Modifies the feedback 
 
@@ -147,7 +167,7 @@ source.controller( additionalSource, ({ dissolve, ...data }, emt, /*lastmsg*/) =
 
 for the main source, the call remains unchanged
 
-## distinct
+### distinct
 Compares each message with the last and emits it if it differs
 
 - equals - {Function} (optional) - function for comparing values
@@ -158,7 +178,7 @@ source.distinct( (prev, cur) => {
 } );
 ```
 
-## log
+### log
 
 Logs messages from the stream
 - adapter {Function} ( optional ) - formatting output

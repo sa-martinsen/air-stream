@@ -201,7 +201,7 @@ export default class Observable {
                 }
 
                 const mess = observables.map(obs => {
-                    const last = obs.queue.length > 1 && obs.queue.slice(-1)[0];
+                    const last = obs.queue.slice().reverse().find( ([evt]) => !keys.includes(evt) );
                     return last && last[1].__sid__ <= src.__sid__ ? last[0] : null
                 });
                 if(mess.every(msg => msg)) {
@@ -279,7 +279,7 @@ export default class Observable {
                             acc = history.slice(1).reduce(
                                 ([acc], [evt, src]) => [ project(acc, evt, src), src ]
                             );
-                            emt(acc[0], { ...acc[1], rid: -1 });
+                            emt(acc[0], { ...src, rid: -1 });
                         }
                     }
                 }
