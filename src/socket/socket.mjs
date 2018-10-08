@@ -1,10 +1,10 @@
 import {stream} from "../index.mjs"
 
-export default ( { url, format = "PING/PONG",  pingtms = 0, reconnecttms = 0 } ) =>
+export default ( { url, pingformat = "PING/PONG",  pingtms = 0, reconnecttms = 0 } ) =>
 
     stream((emt, { over }) => {
 
-        const [ pingmsg, pongmsg ] = format.split("/");
+        const [ pingmsg, pongmsg ] = pingformat.split("/");
 
         let pingpong = 0;
         let reconnecttimeout = null;
