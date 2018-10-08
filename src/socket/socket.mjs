@@ -1,8 +1,10 @@
 import {stream} from "../index.mjs"
 
-export default ( { url, pingtms = 0, reconnecttms = 0 } ) =>
+export default ( { url, pingformat = "PING/PONG",  pingtms = 0, reconnecttms = 0 } ) =>
 
     stream((emt, { over }) => {
+
+        const [ pingmsg, pongmsg ] = pingformat.split("/");
 
         let pingpong = 0;
         let reconnecttimeout = null;
@@ -64,7 +66,7 @@ export default ( { url, pingtms = 0, reconnecttms = 0 } ) =>
                                 reconnect();
                             }
                             else {
-                                socket.readyState === 1 && socket.send("PING");
+                                socket.readyState === 1 && socket.send(pingmsg);
                             }
                         }, pingtms);
                     }
@@ -75,7 +77,7 @@ export default ( { url, pingtms = 0, reconnecttms = 0 } ) =>
                 }
 
                 else if (event.type === "message") {
-                    if (event.data === "PONG") {
+                    if (event.data === pongmsg) {
                         pingpong--;
                     }
                     else {
