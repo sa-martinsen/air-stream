@@ -1,4 +1,4 @@
-import {stream} from "../index.mjs"
+import { stream, keyA } from "../index.mjs"
 
 export default ( { url, pingformat = "PING/PONG",  pingtms = 0, reconnecttms = 0 } ) =>
 
@@ -89,9 +89,16 @@ export default ( { url, pingformat = "PING/PONG",  pingtms = 0, reconnecttms = 0
 
         };
 
-        over.add( ({ dissolve, data }) => {
-            if(!dissolve && socket.readyState === 1) {
-                socket.send(data);
+        over.add( ({ dissolve, data, rid = -1 }) => {
+            if(!dissolve) {
+                if(socket.readyState === 1) {
+                    socket.send(data);
+                }
+                else {
+                    if(rid > -1) {
+                        emt( keyA, { is: { abort: true }, rid } );
+                    }
+                }
             }
         } );
         reconnect();
