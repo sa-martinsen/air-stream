@@ -429,7 +429,7 @@ export default class Observable {
         return new Observable( emt =>
             this.on( (evt, src) => {
                 if(keys.includes(evt)) return emt( evt, src );
-                const _emt = evt => emt(evt, src);
+                const _emt = (evt, _src) => emt(evt, _src || src);
                 _emt.emit = _emt;
                 return handler(_emt, evt)
             })
