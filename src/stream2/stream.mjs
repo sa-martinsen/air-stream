@@ -1,5 +1,5 @@
-import Stack from "../observable/stack.mjs"
-import Queue from "../observable/queue.mjs";
+import Stack from "./stack.mjs"
+import Queue from "./queue.mjs"
 
 const stacks = [];
 const QUEUE = new Queue();
