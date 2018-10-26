@@ -4,4 +4,8 @@ export  default class Emitter {
         creator();
     }
 
+    emt() {
+
+    }
+
 }

@@ -1,6 +1,10 @@
 import Stack from "./stack.mjs"
 import Queue from "./queue.mjs"
 
+function ttmp() {
+    return window.performance.now();
+}
+
 const stacks = [];
 const QUEUE = new Queue();
 
@@ -59,23 +63,29 @@ class Stream {
         this.processed.length = 0;
     }
 
-    emit(data, { __sid__ = stacks.length, is = {}, rid = -1 } = {}) {
+    emit(data, { ttmp = ttmp(), sid = stacks.length, is = null, rid = -1 } = {}) {
 
-        const stack = stacks[__sid__] || (stacks[__sid__] = new Stack({__sid__, queue: QUEUE }));
+        if(is) data = keyA;
+
+        if(data === undefined && !this.init) {
+            data = keyF;
+        }
+
+        /*<@>*/if(data === undefined) throw `attempt to emit 'undefined' data`;/*</@>*/
+
+        const stack = stacks[ sid ] || (stacks[ sid ] = new Stack({ sid, queue: QUEUE }));
 
         if(!this.init && data !== keyF) {
-            this.emit(keyF, { __sid__ });
+            this.emit(keyF, { ttmp, sid });
         }
 
         this.init = true;
-
-        /*<@>*/if(data === undefined) throw `attempt to emit 'undefined' data`;/*</@>*/
 
         if(data === keyF) {
             this.clearProcessed();
         }
 
-        const evt = [data, {__sid__, is, rid }];
+        const evt = [data, { sid, is, rid }];
 
         const act = () => {
             if(data === keyF) this.queue.length = 0;
@@ -102,7 +112,7 @@ class Stream {
 
                 const mess = streams.map(obs => {
                     const last = obs.queue.slice().reverse().find( ([evt]) => !keys.includes(evt) );
-                    return last && last[1].__sid__ <= src.__sid__ ? last[0] : null
+                    return last && last[1].sid <= src.sid ? last[0] : null
                 });
                 if(mess.every(msg => msg)) {
                     emt([...project(evt, ...mess)], src);
@@ -169,7 +179,7 @@ class Stream {
                     return emt(evt, src);
                 }
                 let events = observables
-                    .map( ({ queue }) => queue/*.filter( ([_, {__sid__}]) => __sid__ <= src.__sid__ )*/ );
+                    .map( ({ queue }) => queue/*.filter( ([_, {sid}]) => sid <= src.sid )*/ );
                 if(events.every( evt => evt.length > 1 )) {
                     const _events = events.map( evt => evt.slice(-1)[0][0] );
                     _events.splice( observables.indexOf(obs), 1, evt );
