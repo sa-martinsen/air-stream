@@ -1,5 +1,7 @@
 import Stack from "./stack.mjs"
 import Queue from "./queue.mjs"
+import Emitter from "./emitter.mjs"
+import Handler from "./handler.mjs"
 
 function ttmp() {
     return window.performance.now();
@@ -28,7 +30,8 @@ class Stream {
     on(obs) {
         /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function`; /*</@>*/
         if(!this.obs.length) {
-            this.reactor(this.emitter = new Emitter(), this.handler = new Handler());
+            this.handler = new Handler();
+            this.emitter = new Emitter(this);
         }
         this.queue.map( evt => obs(...evt) );
         this.obs.push(obs);
@@ -75,11 +78,11 @@ class Stream {
 
         const stack = stacks[ sid ] || (stacks[ sid ] = new Stack({ sid, queue: QUEUE }));
 
-        if(!this.init && data !== keyF) {
+        if(!this.initialize && data !== keyF) {
             this.emit(keyF, { ttmp, sid });
         }
 
-        this.init = true;
+        this.initialize = true;
 
         if(data === keyF) {
             this.clearProcessed();
