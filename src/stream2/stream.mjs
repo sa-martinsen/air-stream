@@ -2,21 +2,19 @@ import Stack from "./stack.mjs"
 import Queue from "./queue.mjs"
 import Emitter from "./emitter.mjs"
 import Handler from "./handler.mjs"
+import { keyA, keyF, keys } from "./defs.mjs"
+import performance from "./perfomance.mjs"
 
-function ttmp() {
-    return window.performance.now();
+function gttmp() {
+    return performance.now();
 }
 
 const stacks = [];
 const QUEUE = new Queue();
 
-const { freeze } = Object;
-export const keyF = freeze({ keyF: "keyF" });
-export const keyA = freeze({ keyA: "keyA" });
-
 class Stream {
 
-    constructor( reactor, reducer = (acc, evt) => evt ) {
+    constructor( reactor, reducer = null ) {
         this.reactor = reactor;
         this.reducer = reducer;
         this.emitter = null;
@@ -25,6 +23,8 @@ class Stream {
         this.obs = [];
         this.processed = [];
         this.queue = [];
+        this.acc = undefined;
+        this.rqueue = [];
     }
 
     on(obs) {
@@ -35,7 +35,7 @@ class Stream {
         }
         this.queue.map( evt => obs(...evt) );
         this.obs.push(obs);
-        return ( { request = "disconnect", ...args } = {} ) => {
+        return ( { request, ...args } = { request: "disconnect" } ) => {
             if(request === "disconnect") {
                 const cut = this.obs.indexOf(obs);
                 /*<@>*/if(cut < 0) throw `attempt to delete an observer out of the container`;/*</@>*/
@@ -66,11 +66,11 @@ class Stream {
         this.processed.length = 0;
     }
 
-    emit(data, { ttmp = ttmp(), sid = stacks.length, is = null, rid = -1 } = {}) {
+    emit(data, { ttmp = gttmp(), sid = stacks.length, is = null, rid = -1 } = {}) {
 
         if(is) data = keyA;
 
-        if(data === undefined && !this.init) {
+        if(data === undefined && !this.initialize) {
             data = keyF;
         }
 
@@ -85,10 +85,22 @@ class Stream {
         this.initialize = true;
 
         if(data === keyF) {
+            this.acc = undefined;
             this.clearProcessed();
         }
 
-        const evt = [data, { sid, is, rid }];
+        if(this.reducer) {
+            if(this.rqueue.length > 0) {
+                this.rqueue.push( data );
+                data = this.acc = this.reducer( this.acc, data, { ttmp } );
+            }
+            else {
+                this.rqueue.push( data );
+                this.acc = data;
+            }
+        }
+
+        const evt = [data, { ttmp, sid, is, rid }];
 
         const act = () => {
             if(data === keyF) this.queue.length = 0;
@@ -272,4 +284,4 @@ class Stream {
 
 }
 
-export default (...args) => new Stream(args);
+export default (...args) => new Stream(...args);

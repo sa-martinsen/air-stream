@@ -20,27 +20,18 @@ export default class Stack {
 
     splice(...args) {
         this.itm.splice(...args);
-        //if(!this.itm.length) this.exec();
     }
 
     exec() {
-
         if(this.itm.length) {
             this.itm.shift()();
         }
         else {
-
             const cut = this.queue.itm.indexOf( this );
             /*<@>*/if(cut < 0) throw `attempt to delete an event out of the processed queue`;/*</@>*/
             this.queue.splice( cut, 1 );
             this.quined = false;
-
         }
-/*
-        while (this.itm.length) {
-            this.itm.shift()();
-        }*/
-
     }
 
     cuts(act) {

@@ -1,23 +1,23 @@
-import {expect} from "chai";
-import Observable from "../index.mjs";
-import {series} from "../../utils.mjs"
-import {describe, it} from "mocha";
+import { expect } from "chai";
+import { stream, keyF } from "../index.mjs";
+import { series } from "../../utils.mjs"
+import { describe, it } from "mocha";
 
 describe('constructor', function () {
 
     it('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( keyF ),
             evt => expect(evt).to.deep.equal( 3 ),
             evt => expect(evt).to.deep.equal( 4 ),
         ]);
 
-        const source = new Observable(function (emt) {
-            emt.kf();
+        const source = stream(({ emt, kf }) => {
+            kf();
             emt(1);
             emt(2);
-            emt.kf();
+            kf();
             emt(3);
             emt(4);
         });
@@ -29,17 +29,17 @@ describe('constructor', function () {
     it('empty queue', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( keyF ),
         ]);
 
-        const source = new Observable(function (emt) {
-            emt.kf();
+        const source = stream(({ emt, kf }) => {
+            kf();
             emt(1);
             emt(2);
-            emt.kf();
+            kf();
             emt(3);
             emt(4);
-            emt.kf();
+            kf();
         });
 
         source.on(done);
@@ -49,19 +49,19 @@ describe('constructor', function () {
     it('second subscriber after events', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( keyF ),
             evt => expect(evt).to.deep.equal( 6 ),
             evt => expect(evt).to.deep.equal( 7 ),
         ]);
 
-        const source = new Observable( emt => {
-            emt.kf();
+        const source = stream( ({ emt, kf }) => {
+            kf();
             emt(1);
             emt(2);
             emt(3);
             emt(4);
             emt(5);
-            emt.kf();
+            kf();
             emt(6);
             emt(7);
         });
@@ -76,14 +76,14 @@ describe('constructor', function () {
 
         done = series(done, [ ]);
 
-        const source = new Observable( emt => {
-            emt.kf();
+        const source = stream( ({ emt, kf }) => {
+            kf();
             emt(1);
             emt(2);
             emt(3);
             emt(4);
             emt(5);
-            emt.kf();
+            kf();
             emt(6);
             emt(7);
             setTimeout( () => emt(8) );
@@ -96,19 +96,19 @@ describe('constructor', function () {
     it('unsubscribe over time', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( keyF ),
             evt => expect(evt).to.deep.equal( 6 ),
             evt => expect(evt).to.deep.equal( 7 ),
         ]);
 
-        const source = new Observable( emt => {
-            emt.kf();
+        const source = stream( ({ emt, kf }) => {
+            kf();
             emt(1);
             emt(2);
             emt(3);
             emt(4);
             emt(5);
-            emt.kf();
+            kf();
             emt(6);
             emt(7);
             setTimeout( () => emt(8) );
