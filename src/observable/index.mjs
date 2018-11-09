@@ -315,33 +315,6 @@ export default class Observable {
         } );
     }
 
-    controller( stream, handler = x => x ) {
-        if(typeof stream === "function") {
-            handler = stream;
-            stream = null;
-        }
-        return new Observable( emt => {
-            let value;
-            const subs = this.on((...args) => {
-                value = args[0];
-                emt(...args);
-            });
-            const over = stream ? stream.on(() => {}) : subs;
-            return ({dissolve, ...args}) => {
-                if(dissolve) {
-                    value = undefined;
-                    subs({dissolve: true});
-                    subs !== over && over({dissolve: true});
-                }
-                else {
-                    const res = handler({dissolve: false, ...args}, emt, value);
-                    res && over(res);
-                    subs !== over && subs({dissolve: false, ...args}, emt, value);
-                }
-            }
-        });
-    }
-
     service(  ) {
         return new Observable( emt => {
             const history = [];
@@ -495,6 +468,79 @@ export default class Observable {
     log( adapty = (...args) => args ) {
         this.on( (evt, src) => console.log(...adapty(evt, src)));
         return this;
+    }
+
+    controller( stream, handler = x => x ) {
+        if(typeof stream === "function") {
+            handler = stream;
+            stream = null;
+        }
+        return new Controller( this, stream, handler );
+    }
+
+}
+
+class Controller extends Observable {
+
+    constructor(from, stream, handler) {
+        super( () => {
+            let value;
+            const subs = from.on((...args) => {
+                value = args[0];
+            });
+            const over = stream ? stream.on(() => {}) : subs;
+            return ({dissolve, ...args}) => {
+                if(dissolve) {
+                    value = undefined;
+                    subs({dissolve: true});
+                    subs !== over && over({dissolve: true});
+                }
+                else {
+                    const res = handler({dissolve: false, ...args}, (...args) => this._emitter(...args), value);
+                    res && over(res);
+                    subs !== over && subs({dissolve: false, ...args}, (...args) => this._emitter(...args), value);
+                }
+            }
+        });
+        this.from = from;
+        this.sobs = [];
+    }
+
+    _emitter(...args) {
+        this.sobs.map( obs => obs( ...args ) )
+    }
+
+    on( obs ) {
+
+        let hn = null;
+
+        this.sobs.push(obs);
+
+        if(!this.obs.length) {
+            hn = super.on( () => {} );
+        }
+
+        const hds = this.from.on( obs );
+
+        return ( { dissolve = false, ...args } = { dissolve: true } ) => {
+
+            if(dissolve) {
+
+                hds( { dissolve, ...args } );
+                this.sobs.splice( this.sobs.indexOf(obs), 1 );
+
+                if(!this.obs.length) {
+                    hn && hn( { dissolve } );
+                }
+
+            }
+
+            else {
+                hn && hn( { dissolve, ...args } );
+            }
+
+        }
+
     }
 
 }
