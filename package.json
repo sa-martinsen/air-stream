@@ -1,6 +1,6 @@
 {
   "name": "air-stream",
-  "version": "0.6.17",
+  "version": "0.6.18",
   "module": "src/index.mjs",
   "main": "src/index.mjs",
   "scripts": {
