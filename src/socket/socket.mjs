@@ -74,6 +74,7 @@ export default ( { url, pingformat = "PING/PONG",  pingtms = 0, reconnecttms = 0
 
                 else if (event.type === "close") {
                     console.warn(event);
+                    emt(event);
                 }
 
                 else if (event.type === "message") {
