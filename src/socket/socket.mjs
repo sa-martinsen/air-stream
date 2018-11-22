@@ -63,6 +63,7 @@ export default ( { url, pingformat = "PING/PONG",  pingtms = 0, reconnecttms = 0
                         pinginterval = setInterval(() => {
                             pingpong++;
                             if (pingpong > 1) {
+                                emt(new CloseEvent("close"));
                                 reconnect();
                             }
                             else {
