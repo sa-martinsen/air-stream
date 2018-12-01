@@ -116,6 +116,10 @@ class Stream {
 
     }
 
+    reduce(initer, project) {
+        return new Reducer( this, initer, project );
+    }
+
     withLatest(streams = [], project = (...args) => args) {
         return new Stream( emt => {
             const tails = [];
