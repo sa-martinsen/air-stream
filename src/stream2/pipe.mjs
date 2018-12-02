@@ -6,21 +6,26 @@ export default class Pipe {
 
     /**
      *
-     * @param {Function} creator
+     * @param {Function} producer
      */
-    constructor( creator ) {
+    constructor( producer ) {
         /*<@>*/ if(typeof creator !== "function") throw `first argument 'creator' must be a function`; /*</@>*/
         this._createdttmp = perfomance();
-        this._creator = creator;
+        this._producer = producer;
         this._observers = [];
         this._emitter = null;
     }
 
+    /**
+     *
+     * @param {Function} observer
+     * @returns {Function}
+     */
     on(observer) {
         /*<@>*/ if(typeof observer !== "function") throw `first argument 'obs' must be a function`; /*</@>*/
         if(!this._emitter) {
             this._handler = new Handler();
-            this._emitter = new Emitter(this);
+            this._emitter = new Emitter( this );
         }
         this._observers.push(observer);
         return ( { request, ...args } = { request: "disconnect" } ) => {
@@ -38,6 +43,10 @@ export default class Pipe {
                 this._handler.request( { request, ...args } );
             }
         }
+    }
+
+    emit() {
+
     }
 
 

@@ -1,4 +1,5 @@
-import { keyF, keys } from "./"
+import { Pipe, keyF, keys } from "./"
+import perfomance from "./perfomance";
 
 export default class Reducer extends Pipe {
 
@@ -10,32 +11,21 @@ export default class Reducer extends Pipe {
      */
     constructor( initstream, eventstream, { autoconfirmed } = { autoconfirmed: false } ) {
 
-        super( ( emt, req ) => {
+        super( ( { emt, kf, req } ) => {
 
-            const streams = [];
             let initializer = null;
             
             const sync = (evt, src) => {
 
-                if(evt === keyF && streams.every(z => z)) {
-                    initializer = null;
-                    emt( evt, src );
+                if(evt === keyF) {
+                    this.__quene = null;
                 }
 
                 else {
 
-                    emt.kf( src );
+                    this.__quene = [ [ evt, src ] ];
 
-                    //resubscribe to event stream
-                    //filter past events
-                    //(reconnect)
-
-                    //require 3sec delay
                     emt( evt, src );
-
-                    initializer = [ evt, src ];
-
-                    reconnect();
 
                 }
 
@@ -45,9 +35,18 @@ export default class Reducer extends Pipe {
 
                 if(evt === keyF) {
 
-                    //reconnect();
+                    initializer = [ evt, src ];
+                    emt( evt, src );
 
-                    if( initialized ) {
+                }
+
+                else if(evt === keyA) {
+
+                    if(src.is.aborted) {
+
+                    }
+
+                    else if(src.is.confirmed) {
 
                     }
 
@@ -70,20 +69,17 @@ export default class Reducer extends Pipe {
 
             } ));
 
-            const reconnect = () => {
-                emt.kf(  );
-                eventstreamhook.refresh();
-            };
-
-            //immediately subscribe to multi thread
-
             const eventstreamhook = req.on( eventstream.on( ( evt ) => {
 
 
 
             } ));
 
-        } );
+        }, { core: true } );
+
+        this.__quene = null;
+
+        this._autoconfirmed = autoconfirmed;
 
     }
 
