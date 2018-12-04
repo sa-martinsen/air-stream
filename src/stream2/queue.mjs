@@ -25,3 +25,5 @@ export default class Queue {
     }
 
 }
+
+export const queue = new Queue();

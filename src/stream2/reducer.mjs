@@ -1,15 +1,19 @@
 import { Pipe, keyF, keys } from "./"
-import perfomance from "./perfomance";
 
 export default class Reducer extends Pipe {
 
     /**
-     *
      * @param { Hut|Cold } initstream
-     * @param { Hut } eventstream
+     * @param { Hut|Cold } eventstream
+     * @param { Function } project
      * @param { Boolean } autoconfirmed
      */
-    constructor( initstream, eventstream, { autoconfirmed } = { autoconfirmed: false } ) {
+    constructor(
+        eventstream,
+        initstream,
+        project = (acc, next) => next,
+        { autoconfirmed = false } = {}
+    ) {
 
         super( ( { emt, kf, req } ) => {
 
@@ -75,7 +79,7 @@ export default class Reducer extends Pipe {
 
             } ));
 
-        }, { core: true } );
+        }, { adjactive: initstream && !eventstream.adjactive } );
 
         this.__quene = null;
 
@@ -83,9 +87,15 @@ export default class Reducer extends Pipe {
 
     }
 
-    map() {
+    static combine([]) {
 
+    }
 
+    withLatest([]) {
+
+    }
+
+    filter() {
 
     }
 

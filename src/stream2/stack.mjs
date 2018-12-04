@@ -1,19 +1,22 @@
+import performance from "./perfomance.mjs"
+
 export default class Stack {
 
     constructor( {__sid__, queue } ) {
+        this.ttmp = performance();
         this.itm = [];
         this.__sid__ = __sid__;
-        this.queue = queue;
-        this.quined = true;
+        this._queue = queue;
+        this._quined = true;
         queue.push(this);
     }
 
     push(act) {
-        if(!this.quined) {
-            let index = bfindindex( this.queue.itm, this.__sid__ );
-            if(index === -1) index = this.queue.itm.length;
-            this.queue.splice(index, 0, this);
-            this.quined = true;
+        if(!this._quined) {
+            let index = bfindindex( this._queue.itm, this.__sid__ );
+            if(index === -1) index = this._queue.itm.length;
+            this._queue.splice(index, 0, this);
+            this._quined = true;
         }
         this.itm.push(act);
     }
@@ -24,13 +27,13 @@ export default class Stack {
 
     exec() {
         if(this.itm.length) {
-            this.itm.shift()();
+            this.itm.shift().exec();
         }
         else {
-            const cut = this.queue.itm.indexOf( this );
+            const cut = this._queue.itm.indexOf( this );
             /*<@>*/if(cut < 0) throw `attempt to delete an event out of the processed queue`;/*</@>*/
-            this.queue.splice( cut, 1 );
-            this.quined = false;
+            this._queue.splice( cut, 1 );
+            this._quined = false;
         }
     }
 
@@ -45,3 +48,5 @@ export default class Stack {
 const bfindindex = (arr, sid) => {
     return arr.findIndex( ({__sid__}) => sid < __sid__ );
 };
+
+export const stacks = [];

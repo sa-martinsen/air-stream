@@ -1,10 +1,26 @@
-import { expect } from "chai";
-import { stream, keyF } from "../index.mjs";
+import { expect } from "chai"
+import { stream, Pipe, keyF } from "../index.mjs"
 import { series } from "../../utils.mjs"
-import { describe, it } from "mocha";
+import { describe, it } from "mocha"
 
 describe('constructor', function () {
 
+    it('simple', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal( keyF ),
+            evt => expect(evt).to.deep.equal( 3 ),
+            evt => expect(evt).to.deep.equal( 4 ),
+        ]);
+
+        new Pipe( ({ emt }) => {
+            emt( 3 );
+            emt( 4 );
+        } ).on(done);
+
+    });
+
+/*
     it('simple', (done) => {
 
         done = series(done, [
@@ -117,6 +133,6 @@ describe('constructor', function () {
         const uns = source.on( done );
         setTimeout(() => uns());
 
-    });
+    });*/
 
 });

@@ -1,18 +1,25 @@
 import perfomance from "./perfomance.mjs"
 import Emitter from "./emitter.mjs"
 import Handler from "./handler.mjs"
+import {keyA, keyF} from "./defs.mjs"
+import Stack, { stacks } from "./stack.mjs"
+import { queue } from "./queue.mjs"
+import Action from "./action.mjs"
 
 export default class Pipe {
 
     /**
      *
      * @param {Function} producer
+     * @param {Boolean} adjective
      */
-    constructor( producer ) {
-        /*<@>*/ if(typeof creator !== "function") throw `first argument 'creator' must be a function`; /*</@>*/
+    constructor( producer, { adjective = true } = {} ) {
+        this.adjective = true;
+        /*<@>*/ if(typeof producer !== "function") throw `first argument 'creator' must be a function`; /*</@>*/
         this._createdttmp = perfomance();
         this._producer = producer;
         this._observers = [];
+        this._processed = [];
         this._emitter = null;
     }
 
@@ -27,7 +34,7 @@ export default class Pipe {
             this._handler = new Handler();
             this._emitter = new Emitter( this );
         }
-        this._observers.push(observer);
+        this.registerObserver(observer);
         return ( { request, ...args } = { request: "disconnect" } ) => {
             if(request === "disconnect") {
                 const cut = this._observers.indexOf(observer);
@@ -45,9 +52,40 @@ export default class Pipe {
         }
     }
 
-    emit() {
+    registerObserver(observer) {
+        this._observers.push(observer);
+    }
+
+    emit(data, { sid = stacks.length, is = null, rid = -1 } = {}) {
+
+        if(is) data = keyA;
+
+        if(data === undefined && !this._initialize) {
+            data = keyF;
+        }
+
+        /*<@>*/if(data === undefined) throw `attempt to emit 'undefined' data`;/*</@>*/
+
+        const stack = stacks[ sid ] || (stacks[ sid ] = new Stack({ sid, queue }));
+
+        if(!this._initialize && data !== keyF) {
+            this.emit(keyF, { sid });
+        }
+
+        this._initialize = true;
+
+        if(data === keyF) {
+            this.acc = undefined;
+            this.clearProcessed();
+        }
+
+        new Action( this, { evt: [data, { sid, is, rid, ttmp: stack.ttmp }], stack } );
 
     }
 
+    clearProcessed() {
+        this._processed.map( ({ stack, act }) => stack.cuts(act) );
+        this._processed.length = 0;
+    }
 
 }

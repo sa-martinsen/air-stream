@@ -1,35 +1,36 @@
-import {expect} from "chai";
-import Observable, {keyA, keyF} from "../index.mjs";
+import {expect} from "chai"
+import {stream, keyA, keyF} from "../index.mjs"
 import {series} from "./../../utils.mjs"
 
 describe('reducer', function () {
 
-    it('simple1', (done) => {
+    it('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( keyF ),
             evt => expect(evt).to.deep.equal( 0 ),
             evt => expect(evt).to.deep.equal( 1 ),
             evt => expect(evt).to.deep.equal( 3 ),
             evt => expect(evt).to.deep.equal( 6 ),
         ]);
 
-        const source = new Observable( function (emt) {
-            emt.kf();
-            emt(0, { rid: 0 });
-            emt(1, { rid: 1 });
-            emt(2, { rid: 2 });
-            emt(3, { rid: 3 });
+        const initer = stream( ({ emt }) => {
+            emt(10);
         } );
 
-        source
-            .reducer( (acc, next) => {
-                return acc + next;
-            } )
+        const main = stream( ({ emt }) => {
+            emt(0);
+            emt(1);
+            emt(2);
+            emt(3);
+        } );
+
+        main
+            .reducer( initer, (acc, next) => acc + next )
             .on( done );
 
     });
-
+/*
     it('abort action', (done) => {
 
         done = series(done, [
@@ -61,7 +62,7 @@ describe('reducer', function () {
             } )
             .on( done );
 
-    });
+    });*/
 /*
     it('refresh history', (done) => {
 
