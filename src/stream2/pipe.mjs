@@ -79,8 +79,19 @@ export default class Pipe {
             this.clearProcessed();
         }
 
-        new Action( this, { evt: [data, { sid, is, rid, ttmp: stack.ttmp }], stack } );
+        this
+            .createAction({ evt: [data, { sid, is, rid, ttmp: stack.ttmp }], stack })
+            .activate();
 
+    }
+
+    /**
+     *
+     * @param parms
+     * @returns {Action}
+     */
+    createAction(parms) {
+        return new Action( this, parms );
     }
 
     clearProcessed() {

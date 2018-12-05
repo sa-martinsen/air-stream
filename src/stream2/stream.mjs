@@ -5,10 +5,6 @@ import Handler from "./handler.mjs"
 import { keyA, keyF, keys } from "./defs.mjs"
 import performance from "./perfomance.mjs"
 
-function gttmp() {
-    return performance.now();
-}
-
 const stacks = [];
 const QUEUE = new Queue();
 
@@ -66,7 +62,7 @@ class Stream {
         this.processed.length = 0;
     }
 
-    emit(data, { ttmp = gttmp(), sid = stacks.length, is = null, rid = -1 } = {}) {
+    emit(data, { ttmp = performance(), sid = stacks.length, is = null, rid = -1 } = {}) {
 
         if(is) data = keyA;
 

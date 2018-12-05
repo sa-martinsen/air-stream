@@ -1,6 +1,9 @@
-import { Pipe, keyF, keys } from "./"
+import { keyF, keys } from "./"
+import Accumulator from "./accumulator.mjs"
+import { stacks } from "./stack.mjs"
+import { MERT } from "./defs.mjs"
 
-export default class Reducer extends Pipe {
+export default class Reducer extends Accumulator {
 
     /**
      * @param { Hut|Cold } initstream
@@ -17,31 +20,40 @@ export default class Reducer extends Pipe {
 
         super( ( { emt, kf, req } ) => {
 
-            let initializer = null;
-            
-            const sync = (evt, src) => {
+            let keyState = null;
+            let controllerQuene = [];
+            let keyFrame = null;
+            let acc = null;
+            let tokenIndex = 0;
 
-                if(evt === keyF) {
-                    this.__quene = null;
+            req.on( eventstream.on( ( evt, src ) => {
+
+                if(keys.includes(evt)) return;
+
+                if(!keyFrame || stacks[ keyFrame[1].sid ].ttmp < stacks[ src.sid ].ttmp) {
+                    controllerQuene.push(evt);
                 }
 
-                else {
+                if(keyFrame) {
 
-                    this.__quene = [ [ evt, src ] ];
+                    if(controllerQuene.length - 1 > tokenIndex) {
 
-                    emt( evt, src );
+                        acc = [ project( acc, evt, src ), src ];
+
+                        emt( acc, evt );
+
+                    }
 
                 }
 
-            };
+            } ));
 
-            req.on("disconnect", initstream.on( ( evt, src ) => {
+            const initStreamHook = req.on(initstream.on( ( evt, src ) => {
 
                 if(evt === keyF) {
-
-                    initializer = [ evt, src ];
-                    emt( evt, src );
-
+                    keyState = null;
+                    tokenIndex = 0;
+                    keyFrame = null;
                 }
 
                 else if(evt === keyA) {
@@ -56,34 +68,29 @@ export default class Reducer extends Pipe {
 
                 }
 
-                //aborted to controller stream
-                /*else if( evt === keyA && src.is.aborted ) {
+                else {
 
-                    reconnect();
+                    if(!keyFrame) {
+                        acc = keyFrame = [evt, src];
 
-                    //resubscribe to event stream
-                    //filter past events
-                    //(reconnect)
+                        controllerQuene = controllerQuene.filter( ([, sid]) =>
+                            stacks[sid].ttmp < stacks[src.sid]
+                         );
 
-                    emt();
 
-                }*/
 
-                //sync(evt, src);
+                    }
+                    else {
+                        throw "key frame has already been received";
+                    }
+
+                }
+
+                emt( evt, src );
 
             } ));
 
-            const eventstreamhook = req.on( eventstream.on( ( evt ) => {
-
-
-
-            } ));
-
-        }, { adjactive: initstream && !eventstream.adjactive } );
-
-        this.__quene = null;
-
-        this._autoconfirmed = autoconfirmed;
+        } );
 
     }
 
