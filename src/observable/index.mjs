@@ -506,5 +506,5 @@ Observable.keyA = keyA;
 const keys = Observable.keys = [ keyF, keyA ];
 export const merge = Observable.merge;
 export const combine = Observable.combine;
-export const rid = () => __rid++;
+
 let __rid = 1;

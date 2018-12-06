@@ -1,4 +1,4 @@
-import { Pipe } from "./"
+import { Pipe } from "./index.mjs"
 import Action from "./action.mjs"
 import perfomance from "./perfomance.mjs"
 
@@ -8,7 +8,7 @@ class AccAction extends Action {
         super.exec();
         this.src.__acc.push(this);
         if(this.src.__acc.length > 1) {
-            if(this.src.__acc[0].stream.ttmp < perfomance() - 3000) {
+            if(this.src.__acc[0].stack.ttmp < perfomance() - 3000) {
                 this.src.__acc.shift();
             }
         }
@@ -18,13 +18,13 @@ class AccAction extends Action {
 
 export default class Accumulator extends Pipe {
 
-    constructor() {
-        super();
+    constructor(producer) {
+        super(producer);
         this.__acc = [];
     }
 
     /**
-     * @param {Observer} observer
+     * @param {Function} observer
      * @override
      */
     registerObserver(observer) {

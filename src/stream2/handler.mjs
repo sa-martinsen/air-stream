@@ -11,6 +11,7 @@ export default class Handler {
         }
         this.events[request] = this.events[request] || [];
         this.events[request].push(cb);
+        return cb;
     }
 
     off( request, cb )  {
@@ -21,9 +22,10 @@ export default class Handler {
         const cut = this.events[request].indexOf(cb);
         /*<@>*/if(cut < 0) throw `attempt to delete an cb out of the container`;/*</@>*/
         this.events[request].splice(cut, 1);
+        return cb;
     }
 
-    request( { request, ...args } ) {
+    request( { request = null, ...args } ) {
         ([ ...(this.events[request]||[]), ...(this.events["*"]||[]) ])
             .map( cb => cb( { request, ...args } ) );
     }

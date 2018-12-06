@@ -1,46 +1,59 @@
-import { keyF, keys } from "./"
+import {keyA, keyF, keys, rid} from "./index.mjs"
 import Accumulator from "./accumulator.mjs"
-import { stacks } from "./stack.mjs"
 import { MERT } from "./defs.mjs"
+import perfomance from "./perfomance.mjs"
 
 export default class Reducer extends Accumulator {
 
     /**
-     * @param { Hut|Cold } initstream
-     * @param { Hut|Cold } eventstream
+     * @param { Pipe } initstream
+     * @param { Pipe } eventstream
      * @param { Function } project
-     * @param { Boolean } autoconfirmed
+     * @param { Boolean } free
      */
     constructor(
         eventstream,
         initstream,
         project = (acc, next) => next,
-        { autoconfirmed = false } = {}
+        { free = false } = {}
     ) {
 
         super( ( { emt, kf, req } ) => {
 
-            let keyState = null;
-            let controllerQuene = [];
+            let controllerQueue = [];
             let keyFrame = null;
             let acc = null;
             let tokenIndex = 0;
 
-            req.on( eventstream.on( ( evt, src ) => {
+            req.on( "disconnect", eventstream.on( ( evt, src ) => {
 
                 if(keys.includes(evt)) return;
 
-                if(!keyFrame || stacks[ keyFrame[1].sid ].ttmp < stacks[ src.sid ].ttmp) {
-                    controllerQuene.push(evt);
+                if(!keyFrame || keyFrame[1].sid <= src.sid ) {
+                    controllerQueue.push({ is: 0, evt, src, key: null });
                 }
 
                 if(keyFrame) {
 
-                    if(controllerQuene.length - 1 > tokenIndex) {
+                    if(controllerQueue.length > tokenIndex) {
 
-                        acc = [ project( acc, evt, src ), src ];
+                        acc = [ project( acc[0], evt, src ), src ];
 
-                        emt( acc, evt );
+                        emt( ...acc );
+
+                        if(free) {
+                            keyFrame = acc;
+                        }
+                        else {
+
+                            initStreamHook( {
+                                conformation: evt,
+                                rid: controllerQueue[tokenIndex].src.rid = rid(),
+                                data: acc[0]
+                            } );
+                            tokenIndex++;
+
+                        }
 
                     }
 
@@ -48,21 +61,64 @@ export default class Reducer extends Accumulator {
 
             } ));
 
-            const initStreamHook = req.on(initstream.on( ( evt, src ) => {
+            const initStreamHook = req.on( initstream.on( ( evt, src ) => {
 
                 if(evt === keyF) {
-                    keyState = null;
                     tokenIndex = 0;
                     keyFrame = null;
+                    emt( evt, src );
                 }
 
                 else if(evt === keyA) {
 
-                    if(src.is.aborted) {
+                    const exist = controllerQueue.findIndex(
+                        ({ src: { rid } }) => rid === src.rid
+                    );
+
+                    if(exist > -1) {
+
+                        if(src.is.aborted) {
+
+                            tokenIndex -- ;
+
+                            controllerQueue.splice(exist, 1);
+
+                            emt( keyF, keyFrame[1] );
+
+                            emt( ...keyFrame );
+
+                            acc = controllerQueue.reduce(([evt], next) => {
+                                const res = project(evt, next.evt, next.src);
+                                next.key = res;
+                                emt( res, next.src );
+                                return [ res, next.src ];
+                            }, keyFrame);
+
+                        }
+
+                        else if(src.is.confirmed) {
+
+                            controllerQueue[exist].is = 1;
+                            const cttmp = perfomance() - MERT;
+
+                            const endPoint = controllerQueue.findIndex(
+                                ({ src: { is, ttmp } }) => is && ttmp < cttmp
+                            );
+
+                            //+1 point to the left than time
+                            if(endPoint > 0) {
+                                tokenIndex -= endPoint;
+                                controllerQueue.splice(0, endPoint);
+                                keyFrame = [ controllerQueue.key, controllerQueue.src ]
+                            }
+
+                        }
 
                     }
 
-                    else if(src.is.confirmed) {
+                    else {
+
+                        emt( evt, src );
 
                     }
 
@@ -73,20 +129,41 @@ export default class Reducer extends Accumulator {
                     if(!keyFrame) {
                         acc = keyFrame = [evt, src];
 
-                        controllerQuene = controllerQuene.filter( ([, sid]) =>
-                            stacks[sid].ttmp < stacks[src.sid]
-                         );
+                        emt( evt, src );
 
+                        controllerQueue = controllerQueue.filter( ({src: { sid }}) => sid >= src.sid );
 
+                        if(controllerQueue.length) {
+
+                            acc = controllerQueue.reduce(([evt], next) => {
+                                const res = project(evt, next.evt, next.src);
+                                if(!free) {
+                                    next.key = res;
+                                    initStreamHook( {
+                                        conformation: next.evt,
+                                        rid: next.src.rid = rid(),
+                                        data:
+                                        res
+                                    } );
+                                }
+
+                                emt( res, next.src );
+
+                                return [ res, next.src ];
+                            }, acc);
+
+                            if(free) {
+                                keyFrame = acc;
+                            }
+
+                            tokenIndex = controllerQueue.length;
+
+                        }
 
                     }
-                    else {
-                        throw "key frame has already been received";
-                    }
+                    else { throw "key frame has already been received"; }
 
                 }
-
-                emt( evt, src );
 
             } ));
 

@@ -1,6 +1,7 @@
-import "./constructor"
-
-//import "./reducer"
+import { _MERT_SETUP_ } from "../defs.mjs"
+_MERT_SETUP_(100);
+import "./constructor.mjs"
+import "./reducer.mjs"
 
 /*import "./map"
 import "./filter"

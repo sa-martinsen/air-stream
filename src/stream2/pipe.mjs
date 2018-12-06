@@ -56,9 +56,16 @@ export default class Pipe {
         this._observers.push(observer);
     }
 
+    /**
+     * @param {*} data
+     * @param {Number} sid
+     * @param {Object} is
+     * @param {Number} rid
+     */
     emit(data, { sid = stacks.length, is = null, rid = -1 } = {}) {
 
         if(is) data = keyA;
+        /*<@>*/if(data === keyA && !is) throw `'keyA' system event doesn't support empty 'is' state`;/*</@>*/
 
         if(data === undefined && !this._initialize) {
             data = keyF;
