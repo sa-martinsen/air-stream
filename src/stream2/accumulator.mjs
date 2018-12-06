@@ -1,7 +1,6 @@
 import { Pipe } from "./index.mjs"
 import Action from "./action.mjs"
 import perfomance from "./perfomance.mjs"
-import {iskey} from "./defs.mjs";
 
 class AccAction extends Action {
 
