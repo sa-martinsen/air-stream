@@ -1,6 +1,7 @@
 import { Pipe } from "./index.mjs"
 import Action from "./action.mjs"
 import perfomance from "./perfomance.mjs"
+import {iskey} from "./defs.mjs";
 
 class AccAction extends Action {
 
@@ -39,6 +40,22 @@ export default class Accumulator extends Pipe {
      */
     createAction(parms) {
         return new AccAction( this, parms );
+    }
+
+    static combine([]) {
+
+    }
+
+    withLatest([]) {
+
+    }
+
+    map(project) {
+        return super.map( project, Accumulator );
+    }
+
+    distinct(predicate) {
+        return super.distinct( predicate, Accumulator );
     }
 
 }

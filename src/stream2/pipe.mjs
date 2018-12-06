@@ -1,7 +1,7 @@
 import perfomance from "./perfomance.mjs"
 import Emitter from "./emitter.mjs"
 import Handler from "./handler.mjs"
-import {keyA, keyF} from "./defs.mjs"
+import {iskey, keyA, keyF} from "./defs.mjs"
 import Stack, { stacks } from "./stack.mjs"
 import { queue } from "./queue.mjs"
 import Action from "./action.mjs"
@@ -90,6 +90,45 @@ export default class Pipe {
             .createAction({ evt: [data, { sid, is, rid, ttmp: stack.ttmp }], stack })
             .activate();
 
+    }
+
+    map(project, Lifter = Pipe) {
+        return new Lifter( ({ emt }) =>
+            this.on( (evt, src) => {
+                if(iskey(evt)) {
+                    emt(evt, src);
+                }
+                else {
+                    emt(project(evt, src), src);
+                }
+            } )
+        )
+    }
+
+    distinct(predicate, Lifter = Pipe) {
+        return new Lifter( ({ emt }) => {
+            let prev;
+            return this.on((evt, src) => {
+                if(evt === keyF) {
+                    prev = keyF;
+                }
+                if (iskey(evt)) {
+                    emt(evt, src);
+                }
+                else {
+                    if (!predicate(prev, evt)) {
+                        prev = evt;
+                        emt(evt, src);
+                    }
+                }
+            })
+        })
+    }
+
+    filter(project, Lifter = Pipe) {
+        return new Lifter( ({ emt }) =>
+            this.on((evt, src) => project(evt, src) && emt(evt, src) )
+        );
     }
 
     /**

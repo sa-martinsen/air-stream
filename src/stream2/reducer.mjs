@@ -171,16 +171,4 @@ export default class Reducer extends Accumulator {
 
     }
 
-    static combine([]) {
-
-    }
-
-    withLatest([]) {
-
-    }
-
-    filter() {
-
-    }
-
 }
