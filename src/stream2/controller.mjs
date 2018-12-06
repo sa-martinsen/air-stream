@@ -1,3 +1,5 @@
+import { Pipe } from "./index.mjs"
+
 export default class Controller extends Pipe {
 
     constructor(from, stream, handler) {
