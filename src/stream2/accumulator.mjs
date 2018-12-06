@@ -1,7 +1,7 @@
 import { Pipe } from "./index.mjs"
 import Action from "./action.mjs"
 import perfomance from "./perfomance.mjs"
-import {keyF, keys} from "./defs.mjs";
+import {keyF, keys, MERT} from "./defs.mjs"
 
 class AccAction extends Action {
 
@@ -9,7 +9,7 @@ class AccAction extends Action {
         super.exec();
         this.src.__acc.push(this);
         if(this.src.__acc.length > 1) {
-            if(this.src.__acc[0].stack.ttmp < perfomance() - 3000) {
+            if(this.src.__acc[0].stack.ttmp < perfomance() - MERT) {
                 this.src.__acc.shift();
             }
         }
