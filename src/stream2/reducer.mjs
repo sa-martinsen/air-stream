@@ -109,7 +109,7 @@ export default class Reducer extends Accumulator {
                             if(endPoint > 0) {
                                 tokenIndex -= endPoint;
                                 controllerQueue.splice(0, endPoint);
-                                keyFrame = [ controllerQueue.key, controllerQueue.src ]
+                                keyFrame = [ controllerQueue[0].key, controllerQueue[0].src ]
                             }
 
                         }

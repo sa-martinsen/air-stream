@@ -3,8 +3,8 @@ import Pipe from "./pipe.mjs"
 import Accumulator from "./accumulator.mjs"
 import Controller from "./controller.mjs"
 
-export default (producer, { cacheble = false }) => {
-    const res = cacheble ? new Accumulator(producer) : new Pipe(producer);
+export default (producer, { cached = false } = {}) => {
+    const res = cached ? new Accumulator(producer) : new Pipe(producer);
     res.reduce = (initstream, project, options) => {
         return new Reducer(res, initstream, project, options);
     };

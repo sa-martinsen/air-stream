@@ -1,4 +1,3 @@
-import perfomance from "./perfomance.mjs"
 import Emitter from "./emitter.mjs"
 import Handler from "./handler.mjs"
 import {iskey, keyA, keyF} from "./defs.mjs"
@@ -11,12 +10,9 @@ export default class Pipe {
     /**
      *
      * @param {Function} producer
-     * @param {Boolean} adjective
      */
-    constructor( producer, { adjective = true } = {} ) {
-        this.adjective = true;
+    constructor( producer ) {
         /*<@>*/ if(typeof producer !== "function") throw `first argument 'creator' must be a function`; /*</@>*/
-        this._createdttmp = perfomance();
         this._producer = producer;
         this._observers = [];
         this._processed = [];
@@ -34,6 +30,9 @@ export default class Pipe {
             this._handler = new Handler();
             this._emitter = new Emitter( this );
         }
+        if(this._initialize) {
+            observer( keyF, this._initialize );
+        }
         this.registerObserver(observer);
         return ( { request, ...args } = { request: "disconnect" } ) => {
             if(request === "disconnect") {
@@ -42,6 +41,7 @@ export default class Pipe {
                 this._observers.splice(cut, 1);
                 if(!this._observers.length) {
                     this._handler.request( { request } );
+                    this._initialize = null;
                     this._emitter = null;
                     this._handler = null;
                 }
@@ -68,7 +68,7 @@ export default class Pipe {
         /*<@>*/if(data === keyA && !is) throw `'keyA' system event doesn't support empty 'is' state`;/*</@>*/
 
         if(data === undefined && !this._initialize) {
-            data = keyF;
+            return this.emit( keyF, { sid } );
         }
 
         /*<@>*/if(data === undefined) throw `attempt to emit 'undefined' data`;/*</@>*/
@@ -79,16 +79,17 @@ export default class Pipe {
             this.emit(keyF, { sid });
         }
 
-        this._initialize = true;
-
         if(data === keyF) {
-            this.acc = undefined;
+            this._initialize = { sid };
             this.clearProcessed();
+            this._observers.map(obs => obs( keyF, { sid } ));
         }
 
-        this
-            .createAction({ evt: [data, { sid, is, rid, ttmp: stack.ttmp }], stack })
-            .activate();
+        else {
+            this
+                .createAction({ evt: [data, { sid, is, rid, ttmp: stack.ttmp }], stack })
+                .activate();
+        }
 
     }
 
@@ -141,7 +142,7 @@ export default class Pipe {
     }
 
     clearProcessed() {
-        this._processed.map( ({ stack, act }) => stack.cuts(act) );
+        this._processed.map( act => act.remove() );
         this._processed.length = 0;
     }
 

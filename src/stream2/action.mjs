@@ -20,4 +20,8 @@ export default class Action {
         this.stack.push(this);
     }
 
+    remove() {
+        this.stack.cuts( this );
+    }
+
 }

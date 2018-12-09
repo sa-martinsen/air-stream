@@ -2,10 +2,10 @@ import performance from "./perfomance.mjs"
 
 export default class Stack {
 
-    constructor( {__sid__, queue } ) {
+    constructor( { sid, queue } ) {
         this.ttmp = performance();
         this.itm = [];
-        this.__sid__ = __sid__;
+        this.sid = sid;
         this._queue = queue;
         this._quined = true;
         queue.push(this);
@@ -13,7 +13,7 @@ export default class Stack {
 
     push(act) {
         if(!this._quined) {
-            let index = bfindindex( this._queue.itm, this.__sid__ );
+            let index = bfindindex( this._queue.itm, this.sid );
             if(index === -1) index = this._queue.itm.length;
             this._queue.splice(index, 0, this);
             this._quined = true;
@@ -46,7 +46,7 @@ export default class Stack {
 }
 
 const bfindindex = (arr, sid) => {
-    return arr.findIndex( ({__sid__}) => sid < __sid__ );
+    return arr.findIndex( ({sid: x}) => sid < x );
 };
 
 export const stacks = [];

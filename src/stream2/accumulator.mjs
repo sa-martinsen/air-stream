@@ -7,11 +7,8 @@ class AccAction extends Action {
 
     exec() {
         super.exec();
-        this.src.__acc.push(this);
-        if(this.src.__acc.length > 1) {
-            if(this.src.__acc[0].stack.ttmp < perfomance() - MERT) {
-                this.src.__acc.shift();
-            }
+        if(this.evt[0] !== keyF) {
+            this.src.__acc.push(this);
         }
     }
 
@@ -30,6 +27,12 @@ export default class Accumulator extends Pipe {
      */
     registerObserver(observer) {
         super.registerObserver(observer);
+        const lasted = perfomance() - MERT;
+        this.__acc = this.__acc.slice(
+            //if not exist -1 - last
+            //else - from last index
+            this.__acc.findIndex( ({ stack: { ttmp } }) => ttmp >= lasted )
+        );
         this.__acc.map( ({ evt }) => observer( ...evt ) );
     }
 
@@ -69,6 +72,11 @@ export default class Accumulator extends Pipe {
                 }) )
             );
         } );
+    }
+
+    emit(data, src) {
+        if(data === keyF) this.__acc.length = 0;
+        super.emit(data, src);
     }
 
     /**

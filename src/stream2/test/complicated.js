@@ -38,7 +38,7 @@ describe('1.', function () {
         const srv = new Observable(function ({ push }) {
 
             const socket = new Socket();
-            socket.on( function ( {action, __sid__ = -1, ...data} ) {
+            socket.on( function ( {action, sid = -1, ...data} ) {
 
                 if(action === "ok") {
                     push(  );
