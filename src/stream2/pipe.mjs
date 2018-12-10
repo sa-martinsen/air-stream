@@ -1,6 +1,6 @@
 import Emitter from "./emitter.mjs"
 import Handler from "./handler.mjs"
-import {iskey, keyA, keyF} from "./defs.mjs"
+import {iskey, keyA, keyF, keys} from "./defs.mjs"
 import Stack, { stacks } from "./stack.mjs"
 import { queue } from "./queue.mjs"
 import Action from "./action.mjs"
@@ -50,6 +50,35 @@ export default class Pipe {
                 this._handler.request( { request, ...args } );
             }
         }
+    }
+
+    /**
+     *
+     * @param {Array.<Pipe>} streams
+     * @param {Function} project
+     * @returns {Pipe}
+     */
+    static combine(streams, project = x => x) {
+        return new Pipe( ({ emt, req }) => {
+            const buffer = new Array(streams.length);
+            const sync = (stream, evt, src, i) => {
+                buffer[i] = evt;
+                if(buffer.every(x => x)) {
+                    if(buffer.some(x => x === keyF)) {
+                        emt( keyF, src );
+                    }
+                    else {
+                        emt( project(buffer, src), src );
+                    }
+                }
+            };
+            streams.map( (stream, i) =>
+                req.on( stream.on((evt, src) => {
+                    if(evt !== keyF && keys(evt)) emt(evt, src);
+                    else sync(stream, evt, src, i);
+                }) )
+            );
+        } );
     }
 
     registerObserver(observer) {
@@ -104,6 +133,36 @@ export default class Pipe {
                 }
             } )
         )
+    }
+
+    withLatest(streams, project = x => x) {
+        return new Pipe( ({ emt, req }) => {
+            const buffer = new Array(streams.length);
+            const sync = (stream, evt, src, i) => {
+                buffer[i] = evt;
+            };
+            req.on( (evt, src) => {
+                if(evt === keyF) {
+                    if(buffer.every(x => x)) {
+                        emt(evt, src);
+                    }
+                }
+                else if(keys(evt)) {
+                    emt(evt, src);
+                }
+                else {
+                    if(buffer.every(x => x && x !== keyF)) {
+                        emt(project([evt, ...buffer], src), src);
+                    }
+                }
+            } );
+            streams.map( (stream, i) =>
+                req.on( stream.on((evt, src) => {
+                    if(evt !== keyF && keys(evt)) emt(evt, src);
+                    sync(stream, evt, src, i)
+                }) )
+            );
+        } );
     }
 
     distinct(predicate, Lifter = Pipe) {
