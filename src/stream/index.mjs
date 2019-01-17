@@ -1,7 +1,7 @@
 import Observable from "../observable/index.mjs"
 import Collector from "./collector.mjs"
 
-export default creator =>
+export default ( creator, ctx = null ) =>
     new Observable( emt => {
         const sweep = new Collector();
         const hook = new Collector();
@@ -33,14 +33,14 @@ export default creator =>
             Object.keys(requester)
                 .map( type => requester[type] )
                 .some( req => {
-                    let index;
-                    if(index = req.indexOf(request) > -1) {
+                    const index = req.indexOf(request) > -1;
+                    if(index) {
                         return req.splice(index, 1);
                     }
                 } )
         };
 
-        const res = creator( emt, { sweep, hook, over, request } );
+        const res = creator.call( ctx, emt, { sweep, hook, over, request } );
         if(typeof res === "function") sweep.add( res );
         return ({dissolve = false, action = null, request = action, ...args} = {dissolve: true}) => {
             if(dissolve) {

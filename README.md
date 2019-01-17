@@ -26,8 +26,12 @@ const newStream = stream( (emt, { over/*, hook, sweep*/ }) => {
         
     } );
     
-} );
+}, 
+    ctx
+);
 ```
+
+ctx - (optional) creator fn context
 
 ### socket 
 
