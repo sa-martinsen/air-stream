@@ -9,6 +9,7 @@ import "./merge"
 import "./complicated"
 //import "./controller"*/
 import "./reducer"
+import "./connect"
 
 /*
 import "./simple"
