@@ -35,14 +35,54 @@ export default class Observable {
         this.emt = emt;
 
     }
+	
+	connectable(obs, { full = false } = {}) {
+		if(full) obs = (...args) => !keys.includes(args[0]) && obs(...args);
+		const res =  ( { dissolve = false, ... args } = { dissolve: true } ) => {
+			if(dissolve) {
+				const cut = this.obs.indexOf(obs);
+				/*<@>*/if(cut < 0) throw `attempt to delete an observer out of the container`;/*</@>*/
+				this.obs.splice(cut, 1);
+				if(!this.obs.length) {
+					this.init = false;
+					this.queue.length = 0;
+					this.clearProcessed();
+				}
+				if(this._disconnect) {
+					if(!this.obs.length) {
+						if(Array.isArray(this._disconnect) && this._disconnect[0] === "tail") {
+							[...this._disconnect[1], ...this._disconnect[2]].map( tail => tail( ) );
+						}
+						else {
+							Array.isArray(this._disconnect) ?
+								this._disconnect.map( tail => tail( { dissolve } ) ) : this._disconnect( { dissolve } );
+						}
+					}
+				}
+			}
+			else {
+				
+				if(Array.isArray(this._disconnect) && this._disconnect[0] === "tail") {
+					this._disconnect[1].map( tail => tail( args ) );
+				}
+				
+				else {
+					Array.isArray(this._disconnect) ?
+						this._disconnect.map( dis => dis( args ) ) : this._disconnect && this._disconnect( args );
+				}
+			}
+		};
+		res.connect = () => this.on( obs );
+		return res;
+	}
 
     on(obs) {
         /*<@>*/ if(typeof obs !== "function") throw `first argument 'obs' must be a function`; /*</@>*/
-        if(!this.obs.length) {
+	    this.obs.push(obs);
+        if(this.obs.length === 1) {
             this._disconnect = this.emitter(this.emt) || null;
         }
         this.queue.map( evt => obs(...evt) );
-        this.obs.push(obs);
         return ( { dissolve = false, ... args } = { dissolve: true } ) => {
             if(dissolve) {
                 const cut = this.obs.indexOf(obs);
