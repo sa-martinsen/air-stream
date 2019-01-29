@@ -231,6 +231,37 @@ export default class Observable {
         } );
     }
 
+    withlatest(observables = [], project = (...args) => args) {
+        return new Observable( emt => {
+            const tails = [];
+            function check(evt, src) {
+
+                if(evt === keyF) {
+                    return emt(evt, src);
+                }
+
+                const mess = observables.map(obs => {
+                    const last = obs.queue.slice().reverse().find( ([evt]) => !keys.includes(evt) );
+                    return last && last[1].__sid__ <= src.__sid__ ? last[0] : null
+                });
+                if(mess.every(msg => msg)) {
+                    emt(project(evt, ...mess), src);
+                }
+            }
+            //если изменение из пассивов
+            observables.forEach( obs => tails.push(obs.on( evt => {
+                //только если стволовой поток инициализирован
+                //и текущий поток еще не был задействован
+                if(this.queue.length && obs.queue.length === 1) {
+                    check(...this.queue.slice(-1)[0]);
+                }
+            })) );
+            //если изменение от источника событий
+            tails.push(this.on( check ));
+            return (...args) => tails.map( tail => tail(...args) );
+        } );
+    }
+
     withLatest(observables = [], project = (...args) => args) {
         return new Observable( emt => {
             const tails = [];
