@@ -236,7 +236,7 @@ export default class Observable {
             const tails = [];
             function check(evt, src) {
 
-                if(evt === keyF) {
+                if(keys.includes(evt)) {
                     return emt(evt, src);
                 }
 
