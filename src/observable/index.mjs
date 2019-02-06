@@ -466,31 +466,36 @@ export default class Observable {
     }
 
     static project(...args) { return args; }
-
-    static combine(observables = [], project = Observable.project) {
-        if(!observables.length) throw `observables must be an array of length at least 1`;
-        return new Observable( emt => {
-            observables = observables.map( obs => Observable.from(obs) );
-            const tails = observables.map( obs => obs.on( (evt, src) => {
-                if(evt === keyF && observables.every( ({queue}) => queue.length === 1)) {
-                    return emt(evt, src);
-                }
-                let events = observables
-                    .map( ({ queue }) => queue/*.filter( ([_, {__sid__}]) => __sid__ <= src.__sid__ )*/ );
-                if(events.every( evt => evt.length > 1 )) {
-                    const _events = events.map( evt => evt.slice(-1)[0][0] );
-                    _events.splice( observables.indexOf(obs), 1, evt );
-
-                    if(_events.some(({keyF}) => keyF)) {
-                        throw `may by a several instances of air-stream is loaded?`;
-                    }
-
-                    emt( project(..._events), src );
-                }
-            } ) );
-            return (...args) => tails.forEach(tail => tail(...args));
-        });
-    }
+	
+	static combine(observables = [], project = Observable.project) {
+		
+		if(!observables.length) {
+			return new Observable( emt => emt( project() ) );
+		}
+		
+		//if(!observables.length) throw `observables must be an array of length at least 1`;
+		return new Observable( emt => {
+			observables = observables.map( obs => Observable.from(obs) );
+			const tails = observables.map( obs => obs.on( (evt, src) => {
+				if(evt === keyF && observables.every( ({queue}) => queue.length === 1)) {
+					return emt(evt, src);
+				}
+				let events = observables
+					.map( ({ queue }) => queue/*.filter( ([_, {__sid__}]) => __sid__ <= src.__sid__ )*/ );
+				if(events.every( evt => evt.length > 1 )) {
+					const _events = events.map( evt => evt.slice(-1)[0][0] );
+					_events.splice( observables.indexOf(obs), 1, evt );
+					
+					if(_events.some(({keyF}) => keyF)) {
+						throw `may by a several instances of air-stream is loaded?`;
+					}
+					
+					emt( project(..._events), src );
+				}
+			} ) );
+			return (...args) => tails.forEach(tail => tail(...args));
+		});
+	}
 
     static from(obs) {
         return new Observable( emt => obs.on(emt));
