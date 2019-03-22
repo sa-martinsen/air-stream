@@ -35,7 +35,7 @@ export default class Observable {
         this.emt = emt;
 
     }
-	
+
 	connectable(obs, { full = false } = {}) {
 		if(full) obs = (...args) => !keys.includes(args[0]) && obs(...args);
 		const res =  ( { dissolve = false, ... args } = { dissolve: true } ) => {
@@ -61,11 +61,11 @@ export default class Observable {
 				}
 			}
 			else {
-				
+
 				if(Array.isArray(this._disconnect) && this._disconnect[0] === "tail") {
 					this._disconnect[1].map( tail => tail( args ) );
 				}
-				
+
 				else {
 					Array.isArray(this._disconnect) ?
 						this._disconnect.map( dis => dis( args ) ) : this._disconnect && this._disconnect( args );
@@ -466,13 +466,13 @@ export default class Observable {
     }
 
     static project(...args) { return args; }
-	
+
 	static combine(observables = [], project = Observable.project) {
-		
+
 		if(!observables.length) {
 			return new Observable( emt => emt( project() ) );
 		}
-		
+
 		//if(!observables.length) throw `observables must be an array of length at least 1`;
 		return new Observable( emt => {
 			observables = observables.map( obs => Observable.from(obs) );
@@ -485,11 +485,11 @@ export default class Observable {
 				if(events.every( evt => evt.length > 1 )) {
 					const _events = events.map( evt => evt.slice(-1)[0][0] );
 					_events.splice( observables.indexOf(obs), 1, evt );
-					
+
 					if(_events.some(({keyF}) => keyF)) {
 						throw `may by a several instances of air-stream is loaded?`;
 					}
-					
+
 					emt( project(..._events), src );
 				}
 			} ) );
@@ -534,6 +534,26 @@ export default class Observable {
                 }
             })
         );
+    }
+
+    static sync( streams, equal ) {
+        return Observable
+            .combine( streams )
+            .withHandler( (emt, streams) => {
+                if(streams.length > 1) {
+                    if(streams.every( (a, b) => equal(a, b) )) {
+                        emt(streams);
+                    }
+                }
+                else if(streams.length > 0) {
+                    if(equal(streams[0], streams[0])) {
+                        emt( streams );
+                    }
+                }
+                else {
+                    emt([]);
+                }
+            } );
     }
 
     cut( project ) {
