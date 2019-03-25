@@ -2,6 +2,7 @@ export {
     default as Observable,
     combine,
     merge,
+    sync,
     keyF,
     keyA,
     rid
