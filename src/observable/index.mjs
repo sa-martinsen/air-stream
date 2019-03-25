@@ -536,22 +536,22 @@ export default class Observable {
         );
     }
 
-    static sync( streams, equal ) {
+    static sync( streams, equal, poject = Observable.project ) {
         return Observable
             .combine( streams )
             .withHandler( (emt, streams) => {
                 if(streams.length > 1) {
-                    if(streams.every( (a, b) => equal(a, b) )) {
-                        emt(streams);
+                    if(streams.every( stream => equal(streams[0], stream) )) {
+                        emt(poject(...streams));
                     }
                 }
                 else if(streams.length > 0) {
                     if(equal(streams[0], streams[0])) {
-                        emt( streams );
+                        emt(poject(...streams));
                     }
                 }
                 else {
-                    emt([]);
+                    emt(poject());
                 }
             } );
     }
