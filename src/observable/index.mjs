@@ -156,7 +156,7 @@ export default class Observable {
 	
 	emit(data, { __sid__ = -1, is = {}, rid = -1 } = {}) {
 	    if(__sid__ === -1) {
-		    __sid__ = globals.SID || stacks.length;
+		    __sid__ = globals.SID;
         }
 		const stack = stacks[__sid__] || (stacks[__sid__] = new Stack({__sid__, queue: QUEUE }));
 		
@@ -520,27 +520,25 @@ export default class Observable {
 	}
 	
 	distinct( equal = (a, b) => a === b ) {
-		let prev = null;
-		return new Observable( emt =>
-			this.on( (evt, src) => {
-				if(evt === keyF) {
+		return new Observable( emt => {
+			let prev = null;
+			this.on((evt, src) => {
+				if (evt === keyF) {
 					prev = keyF;
 				}
-				if(!keys.includes(evt)) {
-					if(prev === keyF) {
+				if (!keys.includes(evt)) {
+					if (prev === keyF) {
 						emt(prev = evt, src);
-					}
-					else {
-						if(!equal(prev, evt)) {
+					} else {
+						if (!equal(prev, evt)) {
 							emt(prev = evt, src);
 						}
 					}
-				}
-				else {
+				} else {
 					emt(evt, src);
 				}
 			})
-		);
+		});
 	}
 	
 	static sync( streams, equal, poject = Observable.project ) {
