@@ -4,7 +4,7 @@ export default class Stack {
         this.itm = [];
         this.__sid__ = __sid__;
         this.queue = queue;
-        this.quined = true;
+        this.quined = false;
         queue.push(this);
     }
 
@@ -24,23 +24,13 @@ export default class Stack {
     }
 
     exec() {
-
         if(this.itm.length) {
             this.itm.shift()();
         }
         else {
-
-            const cut = this.queue.itm.indexOf( this );
-            /*<@>*/if(cut < 0) throw `attempt to delete an event out of the processed queue`;/*</@>*/
-            this.queue.splice( cut, 1 );
+            this.queue.remove( this );
             this.quined = false;
-
         }
-/*
-        while (this.itm.length) {
-            this.itm.shift()();
-        }*/
-
     }
 
     cuts(act) {
@@ -51,6 +41,4 @@ export default class Stack {
 
 }
 
-const bfindindex = (arr, sid) => {
-    return arr.findIndex( ({__sid__}) => sid < __sid__ );
-};
+const bfindindex = (arr, sid) => arr.findIndex( x => sid < x.__sid__ );
