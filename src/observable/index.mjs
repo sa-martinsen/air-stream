@@ -522,7 +522,7 @@ export default class Observable {
 	distinct( equal = (a, b) => a === b ) {
 		return new Observable( emt => {
 			let prev = null;
-			this.on((evt, src) => {
+			return this.on((evt, src) => {
 				if (evt === keyF) {
 					prev = keyF;
 				}
