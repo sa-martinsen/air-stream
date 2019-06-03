@@ -350,9 +350,13 @@ export default class Observable {
 						if(canceled > -1) {
 							history.splice(canceled, 1);
 							emt(history[0][0], { ...history[0][1], rid: -1 });
-							acc = history.slice(1).reduce(
-								([acc], [evt, src]) => [ project(acc, evt, src), src ]
-							);
+							acc = history.slice(1).reduce(([acc], [evt, _src], index, {length}) => {
+								acc = [ project(acc, evt, _src), _src ];
+								if(index > length - 3) {
+									emt(acc[0], { ..._src, __sid__: src.__sid__ } );
+								}
+								return acc;
+							});
 							emt(acc[0], { ...src, rid: -1 });
 						}
 					}
@@ -522,7 +526,7 @@ export default class Observable {
 	distinct( equal = (a, b) => a === b ) {
 		return new Observable( emt => {
 			let prev = null;
-			this.on((evt, src) => {
+			return this.on((evt, src) => {
 				if (evt === keyF) {
 					prev = keyF;
 				}
