@@ -1,1 +1,1 @@
-export { default as default } from "./socket.mjs"
+export { default as default } from './socket.mjs';
