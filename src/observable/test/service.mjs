@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import Observable from '../index.mjs';
 import { series } from './../../utils.mjs';
 
@@ -7,15 +6,15 @@ describe('service', function () {
   it('simple1', (done) => {
 
     done = series(done, [
-      evt => expect(evt).to.deep.equal(Observable.keyF),
-      evt => expect(evt).to.deep.equal(0),
-      evt => expect(evt).to.deep.equal(1),
-      evt => expect(evt).to.deep.equal(2),
-      evt => expect(evt).to.deep.equal(3),
-      evt => expect(evt).to.deep.equal(Observable.keyF),
-      evt => expect(evt).to.deep.equal(0),
-      evt => expect(evt).to.deep.equal(1),
-      evt => expect(evt).to.deep.equal(3),
+      evt => expect(evt).toEqual(Observable.keyF),
+      evt => expect(evt).toEqual(0),
+      evt => expect(evt).toEqual(1),
+      evt => expect(evt).toEqual(2),
+      evt => expect(evt).toEqual(3),
+      evt => expect(evt).toEqual(Observable.keyF),
+      evt => expect(evt).toEqual(0),
+      evt => expect(evt).toEqual(1),
+      evt => expect(evt).toEqual(3),
     ]);
 
     const source = new Observable(function (emt) {

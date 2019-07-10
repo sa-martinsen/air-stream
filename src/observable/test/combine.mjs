@@ -86,7 +86,7 @@ describe('combine', () => {
 
     done = series(done, [
       evt => expect(evt).toEqual(keyF),
-      //evt => expect(evt).to.deep.equal(["b1", "b", "b"]),
+      //evt => expect(evt).toEqual(["b1", "b", "b"]),
       evt => expect(evt).toEqual(['b1', 'b', 'c']),
       evt => expect(evt).toEqual(['c1', 'b', 'c']),
     ]);

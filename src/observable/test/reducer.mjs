@@ -65,7 +65,7 @@ describe('reducer', () => {
       it('refresh history', (done) => {
 
           done = series(done, [
-              evt => expect(evt).to.deep.equal( keyF ),
+              evt => expect(evt).toEqual( keyF ),
           ]);
 
           const source = new Observable( function (emt) {
