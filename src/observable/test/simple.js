@@ -1,14 +1,12 @@
-import {expect} from "chai"
 import Observable from "../index.mjs"
-import {describe, it} from "mocha"
 
 function pusher(sequence) {
     return data => sequence.push(data);
 }
 
-describe('Observable', function () {
+describe('Observable', () => {
 
-    describe('log', function () {
+    describe('log', () => {
 
         const source = new Observable(function (emt) {
             emt.emit({count: 2, path: "a"});
@@ -16,16 +14,16 @@ describe('Observable', function () {
             emt.emit({weight: 3, path: "b"});
         });
 
-        it('simple', (done) => {
+        test('simple', (done) => {
             source.log();
             done();
         });
 
     });
 
-    describe('combination', function () {
+    describe('combination', () => {
 
-        it('unsubscribe', (done) => {
+        test('unsubscribe', (done) => {
             const source = new Observable(function (emt) {
                 emt.emit({type: "reinit", weight: 2, path: "a"});
                 emt.emit({type: "reinit", weight: 3, path: "a"});
@@ -38,7 +36,7 @@ describe('Observable', function () {
                 .map( ({weight, ...args}) => ({weight: weight + "77", ...args}) );
             let obs = a.on( evt => {} );
             obs();
-            expect(!source.obs.length).to.equal( 0 );
+            expect(!source.obs.length).toBe(0);
         });
 
     });

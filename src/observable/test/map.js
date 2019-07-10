@@ -1,16 +1,14 @@
-import {describe, it} from "mocha"
 import Observable from "../index.mjs"
-import {expect} from "chai"
 import {series} from "./../../utils.mjs"
 
-describe('map', function () {
+describe('map', () => {
 
-    it('simple', (done) => {
+    test('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 31 ),
-            evt => expect(evt).to.deep.equal( 41 ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual(31),
+            evt => expect(evt).toEqual(41),
         ]);
 
         const source = new Observable( emt => {

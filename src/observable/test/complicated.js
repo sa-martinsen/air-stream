@@ -1,6 +1,4 @@
-import {describe, it} from "mocha"
 import { merge, stream, keyF } from "../../index.mjs"
-import {expect} from "chai"
 import {series} from "../../utils.mjs"
 
 
@@ -55,21 +53,21 @@ describe('1.', function () {
 
 });*/
 
-describe('complicated', function () {
+describe('complicated', () => {
 
-    it('stream reopening', (done) => {
+    test('stream reopening', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toBe("a1"),
+            evt => expect(evt).toBe("b2"),
+            evt => expect(evt).toBe("c3"),
+            evt => expect(evt).toBe("d4"),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toBe("a1"),
+            evt => expect(evt).toBe("b2"),
+            evt => expect(evt).toBe("c3"),
+            evt => expect(evt).toBe("d4"),
         ]);
 
         const source = stream( emt => {

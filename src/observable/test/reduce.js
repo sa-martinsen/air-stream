@@ -1,18 +1,17 @@
-import {expect} from "chai";
 import Observable from "../index.mjs";
 import {series} from "./../../utils.mjs"
 
-describe('reduce', function () {
+describe('reduce', () => {
 
-    it('simple1', (done) => {
+    test('simple1', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( { n: [  ], id: 158, stage: 1, time: 0 } ),
-            evt => expect(evt).to.deep.equal( { n: [ 10, 15, ], id: 158, stage: 1, time: 0 } ),
-            evt => expect(evt).to.deep.equal( { n: [ 10, 15, 16, 17, 18, ], id: 158, stage: 1, time: 0 } ),
-            evt => expect(evt).to.deep.equal( { n: [ 10, 15, 16, 17, 18, ], id: 158, stage: 0, time: 15 } ),
-            evt => expect(evt).to.deep.equal( { n: [ ], id: 159, stage: 1, time: 0 } ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual({ n: [  ], id: 158, stage: 1, time: 0 }),
+            evt => expect(evt).toEqual({ n: [ 10, 15, ], id: 158, stage: 1, time: 0 }),
+            evt => expect(evt).toEqual({ n: [ 10, 15, 16, 17, 18, ], id: 158, stage: 1, time: 0 }),
+            evt => expect(evt).toEqual({ n: [ 10, 15, 16, 17, 18, ], id: 158, stage: 0, time: 15 }),
+            evt => expect(evt).toEqual({ n: [ ], id: 159, stage: 1, time: 0 }),
         ]);
 
         const source = new Observable( function (emt) {

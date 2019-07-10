@@ -1,6 +1,4 @@
-import {expect} from "chai"
 import {series} from "../../utils.mjs"
-import {describe, it} from "mocha"
 import { socket, keyF } from "../../index.mjs"
 
 global.WebSocket = class {
@@ -48,8 +46,8 @@ describe('constructor', function () {
     it('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
-            evt => expect(evt).to.deep.equal("init"),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toEqual("init"),
         ]);
 
         const source = socket( { url: "wss://" } );

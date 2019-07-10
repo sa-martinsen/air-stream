@@ -1,18 +1,17 @@
-import {expect} from "chai"
 import {series} from "../../utils.mjs"
 import { combine, stream, keyF } from "../../index.mjs"
 
-describe('combine', function () {
+describe('combine', () => {
 
-    it('simple1', (done) => {
+    test('simple1', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
-            evt => expect(evt).to.deep.equal([1, 2]),
-            evt => expect(evt).to.deep.equal([1, 3]),
-            evt => expect(evt).to.deep.equal([4, 3]),
-            evt => expect(evt).to.deep.equal([5, 3]),
-            evt => expect(evt).to.deep.equal([5, 6]),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toEqual([1, 2]),
+            evt => expect(evt).toEqual([1, 3]),
+            evt => expect(evt).toEqual([4, 3]),
+            evt => expect(evt).toEqual([5, 3]),
+            evt => expect(evt).toEqual([5, 6]),
         ]);
 
         const source = stream(function (emt) {
@@ -31,10 +30,10 @@ describe('combine', function () {
 
     });
 
-    it('combine key', (done) => {
+    test('combine key', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
+            evt => expect(evt).toEqual(keyF),
         ]);
 
         const source = stream(function (emt) {
@@ -48,11 +47,11 @@ describe('combine', function () {
 
     });
 
-    it('to many streams', (done) => {
+    test('to many streams', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
-            evt => expect(evt).to.deep.equal(["d", "d", "d", "d"]),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toEqual(["d", "d", "d", "d"]),
         ]);
 
         const a = stream(function (emt) {
@@ -83,13 +82,13 @@ describe('combine', function () {
 
     });
 
-    it('loop', (done) => {
+    test('loop', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
+            evt => expect(evt).toEqual(keyF),
             //evt => expect(evt).to.deep.equal(["b1", "b", "b"]),
-            evt => expect(evt).to.deep.equal(["b1", "b", "c"]),
-            evt => expect(evt).to.deep.equal(["c1", "b", "c"]),
+            evt => expect(evt).toEqual(["b1", "b", "c"]),
+            evt => expect(evt).toEqual(["c1", "b", "c"]),
         ]);
 
         const source = stream(function (emt) {

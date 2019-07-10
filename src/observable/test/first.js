@@ -1,15 +1,13 @@
-import {expect} from "chai"
-import {describe, it} from "mocha"
 import Observable from "../index.mjs"
 import {series} from "./../../utils.mjs"
 
-describe('first', function () {
+describe('first', () => {
 
-    it('simple', (done) => {
+    test('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.equal(Observable.keyF),
-            evt => expect(evt).to.equal(1)
+            evt => expect(evt).toBe(Observable.keyF),
+            evt => expect(evt).toBe(1)
         ]);
 
         const source = new Observable(function (emt) {
@@ -21,11 +19,11 @@ describe('first', function () {
         source.on(done);
     });
 
-    it('with combine()', (done) => {
+    test('with combine()', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.equal(Observable.keyF),
-            evt => expect(evt).to.deep.equal([3, 3])
+            evt => expect(evt).toBe(Observable.keyF),
+            evt => expect(evt).toEqual([3, 3])
         ]);
 
         const a = new Observable(function (emt) {

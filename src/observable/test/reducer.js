@@ -1,17 +1,16 @@
-import {expect} from "chai";
 import Observable, {keyA, keyF} from "../index.mjs";
 import {series} from "./../../utils.mjs"
 
-describe('reducer', function () {
+describe('reducer', () => {
 
-    it('simple1', (done) => {
+    test('simple1', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 0 ),
-            evt => expect(evt).to.deep.equal( 1 ),
-            evt => expect(evt).to.deep.equal( 3 ),
-            evt => expect(evt).to.deep.equal( 6 ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual(0),
+            evt => expect(evt).toEqual(1),
+            evt => expect(evt).toEqual(3),
+            evt => expect(evt).toEqual(6),
         ]);
 
         const source = new Observable( function (emt) {
@@ -30,17 +29,17 @@ describe('reducer', function () {
 
     });
 
-    it('abort action', (done) => {
+    test('abort action', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.deep.equal( 0 ),
-            evt => expect(evt).to.deep.equal( 1 ),
-            evt => expect(evt).to.deep.equal( 3 ),
-            evt => expect(evt).to.deep.equal( 6 ),
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.deep.equal( 5 ),
-            evt => expect(evt).to.deep.equal( 9 ),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toEqual(0),
+            evt => expect(evt).toEqual(1),
+            evt => expect(evt).toEqual(3),
+            evt => expect(evt).toEqual(6),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toEqual(2),
+            evt => expect(evt).toEqual(5),
         ]);
 
         const source = new Observable( function (emt) {

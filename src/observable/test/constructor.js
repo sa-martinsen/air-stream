@@ -1,16 +1,14 @@
-import {expect} from "chai";
 import Observable from "../index.mjs";
 import {series} from "../../utils.mjs"
-import {describe, it} from "mocha";
 
-describe('constructor', function () {
+describe('constructor', () => {
 
-    it('simple', (done) => {
+    test('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 3 ),
-            evt => expect(evt).to.deep.equal( 4 ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual(3),
+            evt => expect(evt).toEqual(4),
         ]);
 
         const source = new Observable(function (emt) {
@@ -26,10 +24,10 @@ describe('constructor', function () {
 
     });
 
-    it('empty queue', (done) => {
+    test('empty queue', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).toEqual(Observable.keyF),
         ]);
 
         const source = new Observable(function (emt) {
@@ -46,12 +44,12 @@ describe('constructor', function () {
 
     });
 
-    it('second subscriber after events', (done) => {
+    test('second subscriber after events', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 6 ),
-            evt => expect(evt).to.deep.equal( 7 ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual(6),
+            evt => expect(evt).toEqual(7),
         ]);
 
         const source = new Observable( emt => {
@@ -72,7 +70,7 @@ describe('constructor', function () {
 
     });
 
-    it('unsubscribe', (done) => {
+    test('unsubscribe', (done) => {
 
         done = series(done, [ ]);
 
@@ -93,12 +91,12 @@ describe('constructor', function () {
 
     });
 
-    it('unsubscribe over time', (done) => {
+    test('unsubscribe over time', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 6 ),
-            evt => expect(evt).to.deep.equal( 7 ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual(6),
+            evt => expect(evt).toEqual(7),
         ]);
 
         const source = new Observable( emt => {

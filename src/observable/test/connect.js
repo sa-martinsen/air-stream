@@ -1,11 +1,9 @@
-import {describe, it} from "mocha"
 import { merge, stream, keyF } from "../../index.mjs"
-import {expect} from "chai"
 import {series} from "../../utils.mjs"
 
-describe('connect', function () {
+describe('connect', () => {
 	
-	it('connectable stream self-hooked', (done) => {
+	test('connectable stream self-hooked', (done) => {
 		
 		done = series(done, [ ]);
 		

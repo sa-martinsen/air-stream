@@ -1,9 +1,8 @@
-import {expect} from "chai"
 import Observable from "../index.mjs"
 
-describe('withLatestFrom', function () {
+describe('withLatestFrom', () => {
 
-    it('simple1', (done) => {
+    test('simple1', (done) => {
 
         const source = new Observable(function (emt) {
             emt.emit({count: 2, path: "a"});

@@ -1,16 +1,14 @@
-import {describe, it} from "mocha"
 import Observable from "../index.mjs"
-import {expect} from "chai"
 import {series} from "../../utils.mjs"
 
-describe('filter', function () {
+describe('filter', () => {
 
-    it('simple', (done) => {
+    test('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 1 ),
-            evt => expect(evt).to.deep.equal( 5 ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual(1),
+            evt => expect(evt).toEqual(5),
         ]);
 
         const source = new Observable(function (emt) {
@@ -29,11 +27,11 @@ describe('filter', function () {
 
     });
 
-    it('with reconnect', (done) => {
+    test('with reconnect', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 5 ),
+            evt => expect(evt).toEqual(Observable.keyF),
+            evt => expect(evt).toEqual(5),
         ]);
 
         const source = new Observable(function (emt) {

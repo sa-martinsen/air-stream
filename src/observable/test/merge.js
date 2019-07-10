@@ -1,18 +1,16 @@
-import {describe, it} from "mocha"
 import { merge, stream, keyF } from "../../index.mjs"
-import {expect} from "chai"
 import {series} from "./../../utils.mjs"
 
-describe('merge', function () {
+describe('merge', () => {
 
-    it('simple', (done) => {
+    test('simple', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toBe("a1"),
+            evt => expect(evt).toBe("b2"),
+            evt => expect(evt).toBe("c3"),
+            evt => expect(evt).toBe("d4"),
         ]);
 
         const source = stream( emt => {
@@ -27,12 +25,12 @@ describe('merge', function () {
 
     });
 
-    it('without connectable', (done) => {
+    test('without connectable', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "d4" ),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toBe("b2"),
+            evt => expect(evt).toBe("d4"),
         ]);
 
         const source = stream( emt => {
@@ -47,14 +45,14 @@ describe('merge', function () {
 
     });
 
-    it('without unconnectable', (done) => {
+    test('without unconnectable', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
+            evt => expect(evt).toEqual(keyF),
+            evt => expect(evt).toBe("a1"),
+            evt => expect(evt).toBe("b2"),
+            evt => expect(evt).toBe("c3"),
+            evt => expect(evt).toBe("d4"),
         ]);
 
         const source = stream( emt => {
