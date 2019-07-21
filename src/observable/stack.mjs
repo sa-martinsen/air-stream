@@ -1,8 +1,9 @@
 export default class Stack {
 
   constructor ({ __sid__, queue }) {
-    this.itm = [];
     this.__sid__ = __sid__;
+    this.begin = null;
+    this.end = null;
     this.queue = queue;
     this.quined = false;
     queue.push(this);
@@ -15,28 +16,52 @@ export default class Stack {
       this.queue.splice(index, 0, this);
       this.quined = true;
     }
-    this.itm.push(act);
-  }
-
-  splice (...args) {
-    this.itm.splice(...args);
-    //if(!this.itm.length) this.exec();
+    act.next = null;
+    act.prev = null;
+    if(!this.begin) {
+        this.begin = act;
+        this.end = act;
+    }
+    else {
+        this.end.next = act;
+        act.prev = this.end;
+        this.end = act;
+    }
   }
 
   exec () {
-    if (this.itm.length) {
-      this.itm.shift()();
-    } else {
-      this.queue.remove(this);
-      this.quined = false;
+      let begin = this.begin;
+      if(begin) {
+        this.begin = begin.next;
+        if(this.begin) {
+            this.begin.prev = null;
+        }
+        else {
+            this.end = null;
+        }
+      }
+      else {
+          this.queue.remove(this);
+          this.quined = false;
+      }
+    if(begin) {
+        begin();
     }
   }
 
   cuts (act) {
-    const cut = this.itm.findIndex(x => x === act);
-    /*<@>*/
-    if (cut < 0) throw `attempt to delete an event out of the queue`;/*</@>*/
-    this.splice(cut, 1);
+      if(act === this.begin) {
+          this.begin = act.next;
+      }
+      if(act === this.end) {
+          this.end = act.prev;
+      }
+      if(act.prev) {
+          act.prev.next = act.next;
+      }
+      if(act.next) {
+          act.next.prev = act.prev;
+      }
   }
 
 }
