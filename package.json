@@ -4,6 +4,7 @@
   "module": "src/index.mjs",
   "main": "src/index.mjs",
   "scripts": {
+    "debug": "webpack --config=webpack.debug.config.js --experimental-modules",
     "start": "node run.js",
     "dev": "webpack --config=webpack.dev.config.js",
     "test": "mocha --timeout 100 --require babel-core/register",
@@ -13,6 +14,8 @@
   "author": "/ai",
   "license": "MIT",
   "devDependencies": {
+    "copy-webpack-plugin": "^5.0.4",
+    "webpack": "^4.39.1",
     "babel-core": "^6.26.3",
     "babel-loader": "^8.0.0",
     "babel-preset-env": "^1.7.0",
