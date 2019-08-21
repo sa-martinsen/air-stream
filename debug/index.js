@@ -19,7 +19,7 @@ const src = stream(
 	//connector (optional)
 	(state/*producer*/, privatestate) =>
 		//if undefined -> then not changed
-		["a", "b"], // or indexed if anonymous form
+		({ a: { type: "sync" }, b: { type: "sync" }  }), // or indexed if anonymous form
 );
 
 //нужна форма записи, при которой
@@ -35,18 +35,20 @@ const src = stream(
 //7. Контроллер должен иметь возможность оказывать влияение на состояние
 //   --> ??? что делать с потоками, которые недоступны в момент инициализации <--
 
-stream( stream.from.timeout(1000), () => [
+stream( [ stream.from.timeout(1000) ], () => [
+
+
 
 ] );
 
-stream( stream.from.observer(1000), () => [
+stream( [ stream.from.observer(1000) ], () => [
 
 ] );
 
-stream( stream.from.event(obj, event), () => [
+stream( [ stream.from.event(obj, event) ], () => [
 
 ] );
 
-stream( stream.from.websocket(url), () => [
+stream( [ stream.from.websocket(url) ], () => [
 
 ] );
