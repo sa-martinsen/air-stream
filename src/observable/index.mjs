@@ -374,6 +374,21 @@ export default class Observable {
 		} );
 	}
 	
+	reduceF( state, project ) {
+		return new Observable(emt => {
+			let acc = state;
+			return this.on((evt, src) => {
+				if (evt === keyF) {
+					acc = state;
+					emt(evt, src);
+					emt(acc, src);
+				} else {
+					emt(acc = project(acc, evt, src), src);
+				}
+			});
+		});
+	}
+	
 	reduce(project) {
 		return new Observable( emt => {
 			let acc = empty;
