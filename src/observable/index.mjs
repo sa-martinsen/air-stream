@@ -238,13 +238,17 @@ export default class Observable {
 		return new Observable( emt => {
 			const tails = [];
 			function check(evt, src) {
-				
 				if(keys.includes(evt)) {
 					return emt(evt, src);
 				}
-				
 				const mess = observables.map(obs => {
-					const last = obs.queue.slice().reverse().find( ([evt]) => !keys.includes(evt) );
+					let last = getLastElement(obs.queue);
+					if(!last) {
+						return null;
+					}
+					if(keys.includes(last[0])) {
+						const last = obs.queue.slice().reverse().find( ([evt]) => !keys.includes(evt) );
+					}
 					return last && last[1].__sid__ <= src.__sid__ ? last[0] : null
 				});
 				if(mess.every(msg => msg)) {
@@ -628,3 +632,7 @@ export const sync = Observable.sync;
 export const combine = Observable.combine;
 export const rid = () => __rid++;
 let __rid = 1;
+
+function getLastElement(arr) {
+	return arr[arr.length-1] || null;
+}
