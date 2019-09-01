@@ -1,9 +1,9 @@
 export class Stream2 {
 	
-	constructor(sourcestreams, project) {
+	constructor(sourcestreams, project, ctx = null) {
 		this.subscribers = [];
-		this._activated = false;
 		this.project = project;
+		this.ctx = ctx;
 		this.sourcestreams = sourcestreams;
 	}
 	
@@ -25,9 +25,7 @@ export class Stream2 {
 	}
 	
 	on( subscriber ) {
-		if(!this._activated) {
-			this._activate();
-		}
+		this._activate( subscriber );
 		this.subscribers.push(subscriber);
 		return () => {
 			const removed = this.subscribers.indexOf(subscriber);
@@ -38,17 +36,43 @@ export class Stream2 {
 		}
 	}
 	
-	_activate() {
-		this._activated = true;
-		const emmiter = this.createEmitter();
-		this.controller = new Controller();
-		this.project(emmiter, this.controller);
+	_activate( subscriber ) {
+		const emmiter = this.createEmitter( subscriber );
+		this.controller = this.createController( subscriber );
+		this.project.call(this.ctx, emmiter, this.controller);
 	}
 	
-	createEmitter() {
+	createEmitter( subscriber ) {
 		return (data, record = { ttmp: getTTMP() }) => {
-			this.subscribers.map( subscriber => subscriber(data, record) );
+			subscriber(data, record );
 		};
+	}
+	
+	createController( subscriber ) {
+		return new Controller( subscriber );
+	}
+	
+	static combine(sourcestreams, project = (...streams) => streams) {
+		return new Stream2( sourcestreams, (e, controller) => {
+			const sourcestreamsstate = new Array(sourcestreams.length);
+			controller.onfullproxy( ...sourcestreams.map( (stream, i) => {
+				return stream.on( (data, record) => {
+					sourcestreamsstate[i] = data;
+					if(sourcestreamsstate.every(Boolean)) {
+						e(project(...sourcestreamsstate), record);
+					}
+				} );
+			} ) );
+		} );
+	}
+	
+	log() {
+		return new Stream2( this, (e, controller) => {
+			controller.onfullproxy(this.on((data, record) => {
+				console.log(data);
+				e(data, record);
+			}));
+		});
 	}
 	
 	static ups(UPS = 100) {
@@ -75,15 +99,21 @@ export const stream2 = (...args) => new Stream2(...args);
 stream2.merge = Stream2.merge;
 stream2.fromevent = Stream2.fromevent;
 stream2.ups = Stream2.ups;
+stream2.combine = Stream2.ups;
 
 export class Controller {
 	
 	constructor() {
 		this._ondisconnect = [];
+		this._onfullproxy = [];
 	}
 	
 	ondisconnect(...connectors) {
 		this._ondisconnect.push(...connectors);
+	}
+	
+	onfullproxy(...connectors) {
+		this._onfullproxy.push(...connectors);
 	}
 
 }
@@ -104,7 +134,31 @@ export class Reducer extends Stream2 {
 				e( state, record );
 			} ));
 		});
+		this._activated = false;
 		this.quene = [];
+	}
+	
+	createEmitter( subscriber ) {
+		if(!this.emitter) {
+			this.emitter = (data, record = { ttmp: getTTMP() }) => {
+				this.subscribers.map( subscriber => subscriber(data, record) );
+			};
+		}
+		return this.emitter;
+	}
+	
+	createController( subscriber ) {
+		if(!this.controller) {
+			this.controller = new Controller();
+		}
+		return this.controller;
+	}
+	
+	_activate() {
+		if(!this._activated) {
+			super._activate();
+		}
+		this._activated = true;
 	}
 	
 	normilizeQuene() {
@@ -130,7 +184,7 @@ export class Reducer extends Stream2 {
 }
 
 function getTTMP() {
-	return window.performance.now()|0;
+	return globalThis.performance && globalThis.performance.now()|0 || process.hrtime.bigint();
 }
 
 const MAX_MSG_LIVE_TIME_MS = 7000;
