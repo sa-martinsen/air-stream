@@ -1,11 +1,10 @@
 import {expect} from "chai";
 import { stream2 } from "../index.mjs";
 import {series} from "../../utils.mjs"
-import {describe, it} from "mocha";
 
 describe('constructor', function () {
 
-    it('simple', (done) => {
+    test('simple', (done) => {
 
         done = series(done, [
             evt => expect(evt).to.deep.equal( 1 ),
@@ -67,7 +66,7 @@ describe('constructor', function () {
 
     });
 */
-    it('unsubscribe', (done) => {
+    test('unsubscribe', (done) => {
 
         done = series(done, [
 	        evt => expect(evt).to.deep.equal( 1 ),

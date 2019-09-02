@@ -162,7 +162,6 @@ export class Reducer extends Stream2 {
 	}
 	
 	normilizeQuene() {
-		let absolete;
 		const currentTTMP = getTTMP();
 		let firstUnobseloteMSGIndex = this.quene
 			.findIndex( ( [, {ttmp}]) => ttmp > currentTTMP - MAX_MSG_LIVE_TIME_MS );
