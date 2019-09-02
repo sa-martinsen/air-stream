@@ -1,1 +1,1 @@
-import "./constructor.mjs"
+import './constructor.mjs';
