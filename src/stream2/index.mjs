@@ -25,25 +25,34 @@ export class Stream2 {
 	}
 	
 	on( subscriber ) {
-		this._activate( subscriber );
 		this.subscribers.push(subscriber);
-		return () => {
-			const removed = this.subscribers.indexOf(subscriber);
-			/*<@debug>*/
-			if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
-			/*</@debug>*/
-			this.subscribers.splice(removed, 1);
+		const controller = this._activate( subscriber );
+		return ({ disconnect = false, ...args } = { disconnect: true }) => {
+			if(disconnect) {
+				const removed = this.subscribers.indexOf(subscriber);
+				/*<@debug>*/
+				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+				/*</@debug>*/
+				this.subscribers.splice(removed, 1);
+			}
+			controller.send({ disconnect, ...args });
 		}
 	}
 	
 	_activate( subscriber ) {
 		const emmiter = this.createEmitter( subscriber );
-		this.controller = this.createController( subscriber );
-		this.project.call(this.ctx, emmiter, this.controller);
+		const controller = this.createController( subscriber );
+		this.project.call(this.ctx, emmiter, controller);
+		return controller;
 	}
 	
 	createEmitter( subscriber ) {
 		return (data, record = { ttmp: getTTMP() }) => {
+			/*<@debug>*/
+			if(!this.subscribers.includes(subscriber)) {
+				throw "More unused stream continues to emit data";
+			}
+			/*</@debug>*/
 			subscriber(data, record );
 		};
 	}
@@ -116,6 +125,13 @@ export class Controller {
 		this._onfullproxy.push(...connectors);
 	}
 
+	send( data ) {
+		if(data.disconnect) {
+			this._ondisconnect.map( connector => connector(data) );
+		}
+		this._onfullproxy.map( connector => connector(data) );
+	}
+
 }
 
 export class Reducer extends Stream2 {
@@ -174,10 +190,11 @@ export class Reducer extends Stream2 {
 	}
 	
 	on( subscriber ) {
-		super.on( subscriber );
+		const hook = super.on( subscriber );
 		this.quene.map( ([data, record]) =>
 			this.subscribers.map(subscriber => subscriber(data, record))
 		);
+		return hook;
 	}
 
 }

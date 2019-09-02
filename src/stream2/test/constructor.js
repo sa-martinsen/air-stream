@@ -4,7 +4,7 @@ import {series} from "../../utils.mjs"
 
 describe('constructor', function () {
 
-    test('simple', (done) => {
+    test('simple construct', (done) => {
 
         done = series(done, [
             evt => expect(evt).to.deep.equal( 1 ),
@@ -72,14 +72,31 @@ describe('constructor', function () {
 	        evt => expect(evt).to.deep.equal( 1 ),
         ]);
 
-        const source = stream2( [], e => {
+        const source = stream2( [], (e, controller) => {
             e(1);
-            setTimeout( () => e(2) );
+            const sid = setTimeout( () => e(2) );
+            controller.ondisconnect( () => {
+                clearTimeout( sid )
+            } );
         });
 
         source.on( done )();
 
     });
+
+    test('unsubscribe with broken emitter', () => {
+
+        const source = stream2( [], e => {
+            e(1);
+            setTimeout( () => {
+                expect(() => e(2)).to.throw("More unused stream continues to emit data");
+            } );
+        });
+
+        source.on( () => {} )();
+
+    });
+
 /*
     it('unsubscribe over time', (done) => {
 

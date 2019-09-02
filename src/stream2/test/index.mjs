@@ -1,4 +1,5 @@
 import "./constructor"
+import "./controller"
 /*import "./map"
 import "./filter"
 import "./reduce"
