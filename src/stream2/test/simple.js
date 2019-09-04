@@ -1,46 +1,66 @@
-import {expect} from "chai"
-import Observable from "../index.mjs"
-import {describe, it} from "mocha"
+import { stream2 as stream } from '../index.mjs';
+import { streamEqual, streamEqualStrict } from '../../utils';
 
-function pusher(sequence) {
-    return data => sequence.push(data);
-}
+describe('one stream', () => {
+  it('strict', (done) => {
+    const expected = [
+      {
+        t: 0,
+        data: { a: 1 }
+      },
+      {
+        t: 300,
+        data: 3
+      },
+      {
+        t: 400,
+        data: 4
+      },
+      {
+        t: 500,
+        data: 2
+      },
+      {
+        t: 200,
+        data: 3.1
+      },
+    ];
 
-describe('Observable', function () {
-
-    describe('log', function () {
-
-        const source = new Observable(function (emt) {
-            emt.emit({count: 2, path: "a"});
-            emt.emit({acc: 4, path: "c"});
-            emt.emit({weight: 3, path: "b"});
-        });
-
-        it('simple', (done) => {
-            source.log();
-            done();
-        });
-
+    const source = stream([], function (e) {
+      e({ a: 1 });
+      setTimeout(() => e(2), 500);
+      setTimeout(() => e(4), 400);
+      setTimeout(() => e(3), 300);
+      setTimeout(() => e(3.1), 200);
     });
 
-    describe('combination', function () {
+    streamEqualStrict(done, source, expected);
+  });
 
-        it('unsubscribe', (done) => {
-            const source = new Observable(function (emt) {
-                emt.emit({type: "reinit", weight: 2, path: "a"});
-                emt.emit({type: "reinit", weight: 3, path: "a"});
-                emt.emit({type: "reinit", weight: 3, path: "b"});
-                emt.emit({type: "reinit", weight: 4, path: "a"});
-                return done;
-            });
-            let a = source
-                .filter( ({path}) => path === "a" )
-                .map( ({weight, ...args}) => ({weight: weight + "77", ...args}) );
-            let obs = a.on( evt => {} );
-            obs();
-            expect(!source.obs.length).to.equal( 0 );
-        });
+  it('not strict', (done) => {
+    const expected = [
+      {
+        t: 100,
+        data: 1
+      },
+      {
+        t: 200,
+        data: 2
+      },
+      {
+        t: 300,
+        data: 3
+      },
+    ];
 
+    const source = stream([], function (e) {
+      setTimeout(() => e(1), 100);
+      setTimeout(() => e(2), 200);
+      setTimeout(() => e(3), 300);
+      setTimeout(() => e(4), 400);
+      setTimeout(() => e(5), 500);
     });
+    streamEqual(done, source, expected, { timeout: 10000 });
+  });
 
 });

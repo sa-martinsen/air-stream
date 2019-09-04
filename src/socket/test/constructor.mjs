@@ -4,7 +4,7 @@ import { keyF, socket } from '../../index.mjs';
 global.WebSocket = class {
 
   constructor (url) {
-    console.log('create');
+    // console.log('create');
     this._readystate = 0;
     setTimeout(() => {
       this._readystate = 1;
