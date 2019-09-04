@@ -1,7 +1,10 @@
 import Observable, {keyA} from 'air-stream/src/observable/index';
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
-const STATIC_PROJECTS = { STRAIGHT: data => data };
+const STATIC_PROJECTS = {
+	STRAIGHT: data => data,
+	AIO: (...args) => args,
+};
 
 export class Stream2 {
 	
@@ -10,6 +13,7 @@ export class Stream2 {
 		this.project = project;
 		this.ctx = ctx;
 		this.sourcestreams = sourcestreams;
+		this.controller = this.createController();
 	}
 	
 	static fromevent(target, event) {
@@ -57,7 +61,7 @@ export class Stream2 {
 	
 	on( subscriber ) {
 		this.subscribers.push(subscriber);
-		const controller = this._activate( subscriber );
+		this._activate( subscriber );
 		return ({ disconnect = false, ...args } = { disconnect: true }) => {
 			if(disconnect) {
 				const removed = this.subscribers.indexOf(subscriber);
@@ -66,12 +70,16 @@ export class Stream2 {
 				/*</@debug>*/
 				this.subscribers.splice(removed, 1);
 			}
-			controller.send({
+			this.controller.send({
 				//todo cross ver support
 				dissolve: disconnect,
 				disconnect, ...args
 			});
 		}
+	}
+	
+	connectable() {
+		return new Connectable( this );
 	}
 	
 	map(project) {
@@ -117,9 +125,7 @@ export class Stream2 {
 	
 	_activate( subscriber ) {
 		const emmiter = this.createEmitter( subscriber );
-		const controller = this.createController( subscriber );
-		this.project.call(this.ctx, emmiter, controller);
-		return controller;
+		this.project.call(this.ctx, emmiter, this.controller);
 	}
 	
 	createEmitter( subscriber ) {
@@ -139,14 +145,43 @@ export class Stream2 {
 		};
 	}
 	
-	createController( subscriber ) {
-		return new Controller( subscriber );
+	createController(  ) {
+		return new Controller(  );
+	}
+	
+	static sync (sourcestreams, equal, poject = STATIC_PROJECTS.AIO) {
+		return this
+			.combine(sourcestreams)
+			.withHandler((e, streams) => {
+				if (streams.length > 1) {
+					if (streams.every(stream => equal(streams[0], stream))) {
+						e(poject(...streams));
+					}
+				} else if (streams.length > 0) {
+					if (equal(streams[0], streams[0])) {
+						e(poject(...streams));
+					}
+				} else {
+					e(poject());
+				}
+			});
+	}
+	
+	withHandler (handler) {
+		return new Stream2(null, (e, controller) =>
+			controller.to(this.on((evt, record) => {
+				if (Observable.keys.includes(evt)) {
+					return e(evt, record);
+				}
+				const _e = (evt, _record) => e(evt, _record || record);
+				return handler(_e, evt);
+			}))
+		);
 	}
 	
 	static combine(sourcestreams, project = (...streams) => streams) {
 		if(!sourcestreams.length) {
 			return new Stream2( null, (e) => {
-				debugger;
 				e(project());
 			} );
 		}
@@ -162,6 +197,28 @@ export class Stream2 {
 						e(project(...sourcestreamsstate), record);
 					}
 				} );
+			} ) );
+		} );
+	}
+	
+	withlatest(sourcestreams = [], project = STATIC_PROJECTS.AIO) {
+		return new Stream2( null, (e, controller) => {
+			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
+			controller.todisconnect( ...sourcestreams.map( (stream, i) => {
+				return stream.on( (data, record) => {
+					if(Observable.keys.includes(data)) {
+						return e( data, record );
+					}
+					sourcestreamsstate[i] = data;
+				} );
+			} ) );
+			controller.to( this.on( (data, record) => {
+				if(Observable.keys.includes(data)) {
+					return e( data, record );
+				}
+				if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
+					e(project(data, ...sourcestreamsstate), record);
+				}
 			} ) );
 		} );
 	}
@@ -202,21 +259,27 @@ stream2.ups = Stream2.ups;
 stream2.combine = Stream2.combine;
 stream2.from = Stream2.from;
 stream2.fromPromise = Stream2.fromPromise;
+stream2.sync = Stream2.sync;
 
 export class Controller {
 	
 	constructor() {
 		this.disconnected = false;
 		this._todisconnect = [];
+		this._tocommand = [];
 		this._to = [];
 	}
 	
 	todisconnect(...connectors) {
-		this._to.push(...connectors);
+		this._todisconnect.push(...connectors);
 	}
 	
 	to(...connectors) {
 		this._to.push(...connectors);
+	}
+	
+	tocommand( ...connectors ) {
+		this._tocommand.push( ...connectors );
 	}
 
 	send( data ) {
@@ -224,7 +287,29 @@ export class Controller {
 			this.disconnected = true;
 			this._todisconnect.map( connector => connector(data) );
 		}
+		else {
+			this._tocommand.map( connector => connector(data) );
+		}
 		this._to.map( connector => connector(data) );
+	}
+
+}
+
+export class Connectable extends Stream2 {
+	
+	constructor( sourcestreams ) {
+		super(sourcestreams, (e, controller) => {
+			controller.to( sourcestreams.on(e) );
+		});
+		this._activations = [];
+	}
+	
+	connect() {
+		this._activations.map( subscriber => super._activate(subscriber) );
+	}
+	
+	_activate( subscriber ) {
+		this._activations.push( subscriber );
 	}
 
 }
@@ -277,13 +362,6 @@ export class Reducer extends Stream2 {
 		return this.emitter;
 	}
 	
-	createController( subscriber ) {
-		if(!this.controller) {
-			this.controller = new Controller();
-		}
-		return this.controller;
-	}
-	
 	_activate() {
 		if(!this._activated) {
 			super._activate();
@@ -300,6 +378,9 @@ export class Reducer extends Stream2 {
 		}
 		if(firstUnobseloteMSGIndex > 0) {
 			this.quene.splice( 0, firstUnobseloteMSGIndex + 1);
+		}
+		else {
+			this.quene.splice( 0, this.quene.length - 1);
 		}
 	}
 	
