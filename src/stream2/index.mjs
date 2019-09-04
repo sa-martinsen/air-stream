@@ -108,7 +108,7 @@ export const stream2 = (...args) => new Stream2(...args);
 stream2.merge = Stream2.merge;
 stream2.fromevent = Stream2.fromevent;
 stream2.ups = Stream2.ups;
-stream2.combine = Stream2.ups;
+stream2.combine = Stream2.combine;
 
 export class Controller {
 	

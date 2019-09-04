@@ -84,7 +84,7 @@ describe('constructor.mjs', () => {
       emt.kf();
       emt(6);
       emt(7);
-      setTimeout(() => emt(8));
+      // setTimeout(() => emt(8));
     });
 
     source.on(done)();
@@ -109,7 +109,7 @@ describe('constructor.mjs', () => {
       emt.kf();
       emt(6);
       emt(7);
-      setTimeout(() => emt(8));
+      // setTimeout(() => emt(8));
     });
 
     const uns = source.on(done);

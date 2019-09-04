@@ -1,5 +1,9 @@
-import "./constructor"
-import "./controller"
+import '../../utils';
+import './constructor';
+import './controller';
+import './simple2';
+import './combine2';
+import './merge2';
 /*import "./map"
 import "./filter"
 import "./reduce"
