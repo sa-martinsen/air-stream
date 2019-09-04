@@ -1,3 +1,4 @@
+import {expect} from "chai";
 import { stream2 as stream } from "../index.mjs";
 import {series} from "../../utils.mjs"
 
@@ -6,8 +7,8 @@ describe('constructor', function () {
     test('simple construct', (done) => {
 
         done = series(done, [
-            evt => expect(evt).toEqual( 1 ),
-            evt => expect(evt).toEqual( 2 ),
+            evt => expect(evt).to.deep.equal( 1 ),
+            evt => expect(evt).to.deep.equal( 2 ),
         ]);
 
         const source = stream([], function (e) {
@@ -22,7 +23,7 @@ describe('constructor', function () {
     it('empty queue', (done) => {
 
         done = series(done, [
-            evt => expect(evt).toEqual( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( Observable.keyF ),
         ]);
 
         const source = new Observable(function (emt) {
@@ -42,12 +43,12 @@ describe('constructor', function () {
     test('second subscriber after events', (done) => {
 
         done = series(done, [
-            evt => expect(evt).toEqual( 1 ),
-            evt => expect(evt).toEqual( 2 ),
-            evt => expect(evt).toEqual( 1 ),
-            evt => expect(evt).toEqual( 2 ),
-            evt => expect(evt).toEqual( 3 ),
-            evt => expect(evt).toEqual( 3 ),
+            evt => expect(evt).to.deep.equal( 1 ),
+            evt => expect(evt).to.deep.equal( 2 ),
+            evt => expect(evt).to.deep.equal( 1 ),
+            evt => expect(evt).to.deep.equal( 2 ),
+            evt => expect(evt).to.deep.equal( 3 ),
+            evt => expect(evt).to.deep.equal( 3 ),
         ]);
 
         const source = stream( [], e => {
@@ -68,7 +69,7 @@ describe('constructor', function () {
     test('unsubscribe', (done) => {
 
         done = series(done, [
-	        evt => expect(evt).toEqual( 1 ),
+	        evt => expect(evt).to.deep.equal( 1 ),
         ]);
 
         const source = stream( [], (e, controller) => {
@@ -88,7 +89,7 @@ describe('constructor', function () {
         const source = stream( [], e => {
             e(1);
             setTimeout( () => {
-                expect(() => e(2)).toThrow("More unused stream continues to emit data");
+                expect(() => e(2)).to.throw("More unused stream continues to emit data");
             } );
         });
 
@@ -100,9 +101,9 @@ describe('constructor', function () {
     it('unsubscribe over time', (done) => {
 
         done = series(done, [
-            evt => expect(evt).toEqual( Observable.keyF ),
-            evt => expect(evt).toEqual( 6 ),
-            evt => expect(evt).toEqual( 7 ),
+            evt => expect(evt).to.deep.equal( Observable.keyF ),
+            evt => expect(evt).to.deep.equal( 6 ),
+            evt => expect(evt).to.deep.equal( 7 ),
         ]);
 
         const source = new Observable( emt => {

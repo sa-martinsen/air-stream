@@ -1,48 +1,108 @@
-import { stream2 as stream } from '../index';
-import { streamEqualStrict } from '../../utils';
+import {expect} from "chai"
+import {series} from "../../utils.mjs"
+import { combine, stream, keyF } from "../../index.mjs"
 
-describe('combine', () => {
-    it('simple', (done) => {
-        const expected = [
-            {
-                t: 0,
-                data: [{ a: 1 }, undefined]
-            },
-            {
-                t: 200,
-                data: [2, undefined]
-            },
-            {
-                t: 250,
-                data: [2, 1]
-            },
-            {
-                t: 300,
-                data: [3, 1]
-            },
-            {
-                t: 300,
-                data: [3, 2]
-            },
-            {
-                t: 400,
-                data: [4, 2]
-            },
-        ];
+describe('combine', function () {
 
-        const source1 = stream([], function (e) {
-            e({ a: 1 });
-            setTimeout(() => e(2), 200);
-            setTimeout(() => e(3), 300);
-            setTimeout(() => e(4), 400);
-        });
-        const source2 = stream([], function (e) {
-            setTimeout(() => e(1), 250);
-            setTimeout(() => e(2), 300);
-            setTimeout(() => e(3), 400);
+    it('simple1', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(keyF),
+            evt => expect(evt).to.deep.equal([1, 2]),
+            evt => expect(evt).to.deep.equal([1, 3]),
+            evt => expect(evt).to.deep.equal([4, 3]),
+            evt => expect(evt).to.deep.equal([5, 3]),
+            evt => expect(evt).to.deep.equal([5, 6]),
+        ]);
+
+        const source = stream(function (emt) {
+            emt({count: 1, path: "a"});
+            emt({count: 2, path: "b"});
+            emt({count: 3, path: "b"});
+            emt({count: 4, path: "a"});
+            setTimeout( () => emt({count: 5, path: "a"}) );
+            setTimeout( () => emt({count: 6, path: "b"}) );
         });
 
-        const combined = stream.combine([source1, source2]);
-        streamEqualStrict(done, combined, expected);
+        const a = source.filter( ({path}) => path === "a" );
+        const b = source.filter( ({path}) => path === "b" );
+
+        combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+
     });
+
+    it('combine key', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(keyF),
+        ]);
+
+        const source = stream(function (emt) {
+            emt.kf();
+        });
+
+        const a = source.filter( ({path}) => path === "a" );
+        const b = source.filter( ({path}) => path === "b" );
+
+        combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+
+    });
+
+    it('to many streams', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(keyF),
+            evt => expect(evt).to.deep.equal(["d", "d", "d", "d"]),
+        ]);
+
+        const a = stream(function (emt) {
+            emt("a");
+            emt("b");
+            emt("c");
+            setTimeout(() => emt("d"), 10);
+        });
+
+        const b = stream(function (emt) {
+            emt("c");
+            emt("d");
+            setTimeout(() => emt("e"), 10);
+        });
+
+        const c = stream(function (emt) {
+            emt("c");
+            setTimeout(() => emt("d"), 10);
+        });
+
+        const d = stream(function (emt) {
+            emt("a");
+            emt("b");
+            emt("d");
+        });
+
+        combine([a, b, c, d].map(obs => obs.filter(v => v === "d"))).on( done );
+
+    });
+
+    it('loop', (done) => {
+
+        done = series(done, [
+            evt => expect(evt).to.deep.equal(keyF),
+            //evt => expect(evt).to.deep.equal(["b1", "b", "b"]),
+            evt => expect(evt).to.deep.equal(["b1", "b", "c"]),
+            evt => expect(evt).to.deep.equal(["c1", "b", "c"]),
+        ]);
+
+        const source = stream(function (emt) {
+            emt("a");
+            emt("b");
+            emt("c");
+        });
+
+        const a = source.map( evt => evt + "1");
+        const b = source.filter( evt => evt === "b");
+
+        combine([a, b, source] ).on( done );
+
+    });
+
 });
