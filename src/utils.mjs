@@ -67,38 +67,30 @@ export const streamEqual = (done, source, data = [], options = {}) => {
   });
 };
 
+const DEFAULT_OPTIONS = {
+	delta: 100, // ms
+	timeout: null
+};
+
 export const streamEqualStrict = (done, source, data = [], options = {}) => {
-  const defaultOptions = {
-    delta: 100, // ms
-    timeout: null
-  };
-
   expect.assertions(data.length * 2);
-
-  options = { ...defaultOptions, ...options };
-  //return new Promise((resolve, reject) => {
-    const start = Date.now();
-    data = data.sort((a, b) => a.t - b.t);
-
-    const lastMsgTime = data.reduce((acc, msg) => msg.t > acc ? msg.t : acc, 0);
-    jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
-
-    const doneTimer = setTimeout(() => {
-      //resolve();
+  options = { ...DEFAULT_OPTIONS, ...options };
+  const start = Date.now();
+  data.sort((a, b) => a.t - b.t);
+  const lastMsgTime = data.reduce((acc, msg) => msg.t > acc ? msg.t : acc, 0);
+  jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
+  const doneTimer = setTimeout(() => {
+    done();
+  }, lastMsgTime + options.delta);
+  return source.on(msg => {
+    const assert = data.shift();
+    if (typeof assert === 'undefined') {
+      clearTimeout(doneTimer);
       done();
-    }, lastMsgTime + options.delta);
-
-    return source.on(msg => {
-      const assert = data.shift();
-      if (typeof assert === 'undefined') {
-        clearTimeout(doneTimer);
-        //resolve();
-        done();
-      } else {
-        const now = Date.now() - start;
-        expect(assert.data).toEqual(msg);
-        expect(Math.abs(assert.t - now)).toBeLessThanOrEqual(options.delta);
-      }
-    });
-  //});
+    } else {
+      const now = Date.now() - start;
+      expect(assert.data).toEqual(msg);
+      expect(Math.abs(assert.t - now)).toBeLessThanOrEqual(options.delta);
+    }
+  });
 };

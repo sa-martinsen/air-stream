@@ -74,7 +74,7 @@ describe('constructor', function () {
         const source = stream( [], (e, controller) => {
             e(1);
             const sid = setTimeout( () => e(2) );
-            controller.ondisconnect( () => {
+            controller.todisconnect( () => {
                 clearTimeout( sid )
             } );
         });

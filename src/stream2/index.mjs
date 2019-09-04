@@ -1,4 +1,4 @@
-import Observable from 'air-stream/src/observable/index';
+import Observable, {keyA} from 'air-stream/src/observable/index';
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
 const STATIC_PROJECTS = { STRAIGHT: data => data };
@@ -15,13 +15,13 @@ export class Stream2 {
 	static fromevent(target, event) {
 		return new Stream2( [], (e, controller) => {
 			target.addEventListener( event, e );
-			controller.ondisconnect( () => target.removeEventListener( event, e ));
+			controller.todisconnect( () => target.removeEventListener( event, e ));
 		});
 	}
 	
 	static merge(sourcestreams, project) {
 		return new Stream2( [], (e, controller) => {
-			controller.ondisconnect(...sourcestreams.map( stream => stream.on( e ) ));
+			controller.todisconnect(...sourcestreams.map( stream => stream.on( e ) ));
 		});
 	}
 	
@@ -74,6 +74,47 @@ export class Stream2 {
 		}
 	}
 	
+	map(project) {
+		return new Stream2(null, (e, controller) => {
+			controller.to(this.on( (data, record) => {
+				if(Observable.keys.includes(data, record)) {
+					return e(data, record);
+				}
+				e(project(data), record);
+			} ));
+		});
+	}
+	
+	filter(project) {
+		return new Stream2(null, (e, controller) => {
+			controller.to(this.on( (data, record) => {
+				if(Observable.keys.includes(data, record)) {
+					return e(data, record);
+				}
+				const res = e(project(data));
+				res && e(data, record);
+			} ));
+		});
+	}
+	
+	distinct(equal) {
+		return new Stream2(null, (e, controller) => {
+			let state = EMPTY_OBJECT;
+			controller.to(this.on( (data, record) => {
+				if(Observable.keys.includes(data, record)) {
+					if(data === keyA) {
+						state = EMPTY_OBJECT;
+					}
+					return e(data, record);
+				}
+				if(!equal(state, data)) {
+					state = data;
+					e(data, record);
+				}
+			} ));
+		});
+	}
+	
 	_activate( subscriber ) {
 		const emmiter = this.createEmitter( subscriber );
 		const controller = this.createController( subscriber );
@@ -88,6 +129,12 @@ export class Stream2 {
 				throw "More unused stream continues to emit data";
 			}
 			/*</@debug>*/
+			
+			//todo temporary cross ver support
+			if(Observable.keys.includes(data)) {
+				return ;
+			}
+			
 			subscriber(data, record );
 		};
 	}
@@ -97,9 +144,15 @@ export class Stream2 {
 	}
 	
 	static combine(sourcestreams, project = (...streams) => streams) {
+		if(!sourcestreams.length) {
+			return new Stream2( null, (e) => {
+				debugger;
+				e(project());
+			} );
+		}
 		return new Stream2( sourcestreams, (e, controller) => {
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
-			controller.onfullproxy( ...sourcestreams.map( (stream, i) => {
+			controller.to( ...sourcestreams.map( (stream, i) => {
 				return stream.on( (data, record) => {
 					if(Observable.keys.includes(data)) {
 						return e( data, record );
@@ -115,7 +168,7 @@ export class Stream2 {
 	
 	log() {
 		return new Stream2( this, (e, controller) => {
-			controller.onfullproxy(this.on((data, record) => {
+			controller.to(this.on((data, record) => {
 				console.log(data);
 				e(data, record);
 			}));
@@ -136,7 +189,7 @@ export class Stream2 {
 					e(globalCounter, { ttmp: startttmp + globalCounter * factor|0 });
 				}
 			}, 500 / UPS);
-			controller.ondisconnect( () => clearInterval(sid) );
+			controller.todisconnect( () => clearInterval(sid) );
 		} );
 	}
 	
@@ -154,24 +207,24 @@ export class Controller {
 	
 	constructor() {
 		this.disconnected = false;
-		this._ondisconnect = [];
-		this._onfullproxy = [];
+		this._todisconnect = [];
+		this._to = [];
 	}
 	
-	ondisconnect(...connectors) {
-		this._ondisconnect.push(...connectors);
+	todisconnect(...connectors) {
+		this._to.push(...connectors);
 	}
 	
-	onfullproxy(...connectors) {
-		this._onfullproxy.push(...connectors);
+	to(...connectors) {
+		this._to.push(...connectors);
 	}
 
 	send( data ) {
 		if(data.disconnect) {
 			this.disconnected = true;
-			this._ondisconnect.map( connector => connector(data) );
+			this._todisconnect.map( connector => connector(data) );
 		}
-		this._onfullproxy.map( connector => connector(data) );
+		this._to.map( connector => connector(data) );
 	}
 
 }
@@ -187,7 +240,7 @@ export class Reducer extends Stream2 {
 		super(sourcestreams, (e, controller) => {
 			if(state !== EMPTY_OBJECT) {
 				if(state instanceof Stream2) {
-					controller.ondisconnect(state.on( e ));
+					controller.todisconnect(state.on( e ));
 				}
 				else {
 					const msg = [ state, { ttmp: getTTMP() } ];
@@ -196,11 +249,11 @@ export class Reducer extends Stream2 {
 				}
 			}
 			if(sourcestreams) {
-				controller.ondisconnect(sourcestreams.on( (data, record ) => {
+				controller.todisconnect(sourcestreams.on( (data, record ) => {
 					state = project(state, data);
 					this.quene.push([ state, record ]);
 					if(this.quene.length > 1) {
-						this.normilizeQuene();
+						this._normilizeQuene();
 					}
 					e( state, record );
 				} ));
@@ -238,7 +291,7 @@ export class Reducer extends Stream2 {
 		this._activated = true;
 	}
 	
-	normilizeQuene() {
+	_normilizeQuene() {
 		const currentTTMP = getTTMP();
 		let firstUnobseloteMSGIndex = this.quene
 			.findIndex( ( [, {ttmp}]) => ttmp > currentTTMP - MAX_MSG_LIVE_TIME_MS );

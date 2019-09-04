@@ -25,22 +25,26 @@ describe('combine', () => {
         const combined = stream.combine([source1, source2]);
         streamEqualStrict(done, combined, expected);
     });
-
-
+    
     test('simple disconnect', (done) => {
         const source1 = stream([], function (e, controller) {
             e(1);
             const sid = setTimeout(() => e(2));
-            controller.ondisconnect( () => clearTimeout(sid) );
+            controller.todisconnect( () => clearTimeout(sid) );
         });
         const source2 = stream([], function (e, controller) {
             e(2);
             const sid = setTimeout(() => e(1));
-            controller.ondisconnect( () => clearTimeout(sid) );
+            controller.todisconnect( () => clearTimeout(sid) );
         });
         const combined = stream.combine([source1, source2]);
         combined.on( ([a, b]) => { } )();
         setTimeout( done, 10 );
     });
+	
+	test('empty source combiner', (done) => {
+		const combined = stream.combine([]);
+		streamEqualStrict(done, combined, [ { t: 100, data: [] } ]);
+	});
 
 });
