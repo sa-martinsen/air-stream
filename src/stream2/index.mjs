@@ -1,5 +1,7 @@
 import Observable from 'air-stream/src/observable/index';
+
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
+const STATIC_PROJECTS = { STRAIGHT: data => data };
 
 export class Stream2 {
 	
@@ -25,6 +27,32 @@ export class Stream2 {
 	
 	reduceF(state, project) {
 		return new Reducer( this, project, state);
+	}
+
+	/**
+	 * @param {Promise} source - Input source
+	 * @param {Function} project - Mapper project function
+	 * @returns {Stream2}
+	 */
+	static from(source, project) {
+		if(source instanceof Promise) {
+			return this.fromPromise(source, project);
+		}
+		throw new TypeError("Unsupported source type");
+	}
+
+	static fromPromise(source, project = STATIC_PROJECTS.STRAIGHT) {
+		return new Stream2(null, (e, controller) => {
+			source.then( data => {
+				if(!controller.disconnected) {
+					e(project(data));
+				}
+			} );
+		});
+	}
+
+	store() {
+		return new Reducer( null, null, this );
 	}
 	
 	on( subscriber ) {
@@ -119,10 +147,13 @@ stream2.merge = Stream2.merge;
 stream2.fromevent = Stream2.fromevent;
 stream2.ups = Stream2.ups;
 stream2.combine = Stream2.combine;
+stream2.from = Stream2.from;
+stream2.fromPromise = Stream2.fromPromise;
 
 export class Controller {
 	
 	constructor() {
+		this.disconnected = false;
 		this._ondisconnect = [];
 		this._onfullproxy = [];
 	}
@@ -137,6 +168,7 @@ export class Controller {
 
 	send( data ) {
 		if(data.disconnect) {
+			this.disconnected = true;
 			this._ondisconnect.map( connector => connector(data) );
 		}
 		this._onfullproxy.map( connector => connector(data) );
