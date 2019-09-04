@@ -1,18 +1,17 @@
 import {expect} from "chai";
-import { stream2 } from "../index.mjs";
+import { stream2 as stream } from "../index.mjs";
 import {series} from "../../utils.mjs"
-import {describe, it} from "mocha";
 
 describe('constructor', function () {
 
-    it('simple', (done) => {
+    test('simple construct', (done) => {
 
         done = series(done, [
             evt => expect(evt).to.deep.equal( 1 ),
             evt => expect(evt).to.deep.equal( 2 ),
         ]);
 
-        const source = stream2([], function (e) {
+        const source = stream([], function (e) {
 	        e( 1 );
 	        e( 2 );
         });
@@ -40,47 +39,64 @@ describe('constructor', function () {
         source.on(done);
 
     });
-
-    it('second subscriber after events', (done) => {
+*/
+    test('second subscriber after events', (done) => {
 
         done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 6 ),
-            evt => expect(evt).to.deep.equal( 7 ),
+            evt => expect(evt).to.deep.equal( 1 ),
+            evt => expect(evt).to.deep.equal( 2 ),
+            evt => expect(evt).to.deep.equal( 1 ),
+            evt => expect(evt).to.deep.equal( 2 ),
+            evt => expect(evt).to.deep.equal( 3 ),
+            evt => expect(evt).to.deep.equal( 3 ),
         ]);
 
-        const source = new Observable( emt => {
-            emt.kf();
-            emt(1);
-            emt(2);
-            emt(3);
-            emt(4);
-            emt(5);
-            emt.kf();
-            emt(6);
-            emt(7);
+        const source = stream( [], e => {
+            e(1);
+            e(2);
+            e(3);
         });
 
-        source.on( () => {} );
-
-        setTimeout(() => source.on( done ));
+        source.on( (data) => {
+            done(data);
+            if(data === 2) {
+                source.on( done );
+            }
+        } );
 
     });
-*/
-    it('unsubscribe', (done) => {
+
+    test('unsubscribe', (done) => {
 
         done = series(done, [
 	        evt => expect(evt).to.deep.equal( 1 ),
         ]);
 
-        const source = stream2( [], e => {
+        const source = stream( [], (e, controller) => {
             e(1);
-            setTimeout( () => e(2) );
+            const sid = setTimeout( () => e(2) );
+            controller.ondisconnect( () => {
+                clearTimeout( sid )
+            } );
         });
 
         source.on( done )();
 
     });
+
+    test('unsubscribe with broken emitter', () => {
+
+        const source = stream( [], e => {
+            e(1);
+            setTimeout( () => {
+                expect(() => e(2)).to.throw("More unused stream continues to emit data");
+            } );
+        });
+
+        source.on( () => {} )();
+
+    });
+
 /*
     it('unsubscribe over time', (done) => {
 

@@ -1,10 +1,9 @@
 {
   "name": "air-stream",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "module": "src/index.mjs",
   "main": "src/index.mjs",
   "scripts": {
-    "debug": "webpack --config=webpack.debug.config.js --experimental-modules",
     "start": "node run.js",
     "dev": "webpack --config=webpack.dev.config.js",
     "test": "jest --verbose",
@@ -28,6 +27,7 @@
     "@babel/preset-env": "^7.0.0",
     "@babel/register": "^7.0.0",
     "babel-jest": "^24.8.0",
+    "babel-loader": "^8.0.0",
     "copy-webpack-plugin": "^5.0.4",
     "webpack": "^4.39.1",
     "jest": "^24.8.0"
