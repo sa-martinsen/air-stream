@@ -145,20 +145,39 @@ export class Controller {
 }
 
 export class Reducer extends Stream2 {
-	
-	constructor(sourcestreams, project, state) {
+
+	/**
+	 * @param sourcestreams {Stream2|null} Operational stream
+	 * @param project {Function}
+	 * @param state {Object|Stream2} Initial state (from static or stream)
+	 */
+	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT) {
 		super(sourcestreams, (e, controller) => {
-			const msg = [ state, { ttmp: getTTMP() } ];
-			this.quene.push(msg);
-			e( state, msg );
-			controller.ondisconnect(sourcestreams.on( (data, record ) => {
-				state = project(state, data);
-				this.quene.push([ state, record ]);
-				if(this.quene.length > 1) {
-					this.normilizeQuene();
+			if(state !== EMPTY_OBJECT) {
+				if(state instanceof Stream2) {
+					controller.ondisconnect(state.on( e ));
 				}
-				e( state, record );
-			} ));
+				else {
+					const msg = [ state, { ttmp: getTTMP() } ];
+					this.quene.push(msg);
+					e( ...msg );
+				}
+			}
+			if(sourcestreams) {
+				controller.ondisconnect(sourcestreams.on( (data, record ) => {
+					state = project(state, data);
+					this.quene.push([ state, record ]);
+					if(this.quene.length > 1) {
+						this.normilizeQuene();
+					}
+					e( state, record );
+				} ));
+			}
+			if(!sourcestreams && !state) {
+				/*<@debug>*/
+				console.warn("This stream is always empty.");
+				/*</@debug>*/
+			}
 		});
 		this._activated = false;
 		this.quene = [];
