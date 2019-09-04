@@ -1,3 +1,6 @@
+import Observable from 'air-stream/src/observable/index';
+const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
+
 export class Stream2 {
 	
 	constructor(sourcestreams, project, ctx = null) {
@@ -35,7 +38,11 @@ export class Stream2 {
 				/*</@debug>*/
 				this.subscribers.splice(removed, 1);
 			}
-			controller.send({ disconnect, ...args });
+			controller.send({
+				//todo cross ver support
+				dissolve: disconnect,
+				disconnect, ...args
+			});
 		}
 	}
 	
@@ -63,11 +70,14 @@ export class Stream2 {
 	
 	static combine(sourcestreams, project = (...streams) => streams) {
 		return new Stream2( sourcestreams, (e, controller) => {
-			const sourcestreamsstate = new Array(sourcestreams.length);
+			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
 			controller.onfullproxy( ...sourcestreams.map( (stream, i) => {
 				return stream.on( (data, record) => {
+					if(Observable.keys.includes(data)) {
+						return e( data, record );
+					}
 					sourcestreamsstate[i] = data;
-					if(sourcestreamsstate.every(Boolean)) {
+					if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
 						e(project(...sourcestreamsstate), record);
 					}
 				} );

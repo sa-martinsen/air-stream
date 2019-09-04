@@ -2,34 +2,15 @@ import { stream2 as stream } from '../index';
 import { streamEqualStrict } from '../../utils';
 
 describe('combine', () => {
-    it('simple', (done) => {
-        const expected = [
-            {
-                t: 0,
-                data: [{ a: 1 }, undefined]
-            },
-            {
-                t: 200,
-                data: [2, undefined]
-            },
-            {
-                t: 250,
-                data: [2, 1]
-            },
-            {
-                t: 300,
-                data: [3, 1]
-            },
-            {
-                t: 300,
-                data: [3, 2]
-            },
-            {
-                t: 400,
-                data: [4, 2]
-            },
-        ];
 
+    test('simple', (done) => {
+        const expected = [
+            { t: 250, data: [2, 1] },
+            { t: 300, data: [3, 1] },
+            { t: 300, data: [3, 2] },
+            { t: 400, data: [4, 2] },
+            //{ disconnect: true },
+        ];
         const source1 = stream([], function (e) {
             e({ a: 1 });
             setTimeout(() => e(2), 200);
@@ -41,8 +22,25 @@ describe('combine', () => {
             setTimeout(() => e(2), 300);
             setTimeout(() => e(3), 400);
         });
-
         const combined = stream.combine([source1, source2]);
         streamEqualStrict(done, combined, expected);
     });
+
+
+    test('simple disconnect', (done) => {
+        const source1 = stream([], function (e, controller) {
+            e(1);
+            const sid = setTimeout(() => e(2));
+            controller.ondisconnect( () => clearTimeout(sid) );
+        });
+        const source2 = stream([], function (e, controller) {
+            e(2);
+            const sid = setTimeout(() => e(1));
+            controller.ondisconnect( () => clearTimeout(sid) );
+        });
+        const combined = stream.combine([source1, source2]);
+        combined.on( ([a, b]) => { } )();
+        setTimeout( done, 10 );
+    });
+
 });

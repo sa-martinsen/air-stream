@@ -76,7 +76,7 @@ export const streamEqualStrict = (done, source, data = [], options = {}) => {
   expect.assertions(data.length * 2);
 
   options = { ...defaultOptions, ...options };
-  return new Promise((resolve, reject) => {
+  //return new Promise((resolve, reject) => {
     const start = Date.now();
     data = data.sort((a, b) => a.t - b.t);
 
@@ -84,15 +84,15 @@ export const streamEqualStrict = (done, source, data = [], options = {}) => {
     jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
 
     const doneTimer = setTimeout(() => {
-      resolve();
+      //resolve();
       done();
     }, lastMsgTime + options.delta);
 
-    source.on(msg => {
+    return source.on(msg => {
       const assert = data.shift();
       if (typeof assert === 'undefined') {
         clearTimeout(doneTimer);
-        resolve();
+        //resolve();
         done();
       } else {
         const now = Date.now() - start;
@@ -100,5 +100,5 @@ export const streamEqualStrict = (done, source, data = [], options = {}) => {
         expect(Math.abs(assert.t - now)).toBeLessThanOrEqual(options.delta);
       }
     });
-  });
+  //});
 };

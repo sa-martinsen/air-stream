@@ -1,4 +1,4 @@
-import './constructor';
+/*import './constructor';
 import './map';
 import './filter';
 import './reduce';
@@ -8,7 +8,7 @@ import './first';
 import './merge';
 import './complicated';
 //import "./controller"*/
-import './reducer';
+/*import './reducer';
 import './connect';
 
 /*
