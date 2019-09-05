@@ -1,4 +1,5 @@
 import Observable, {keyA} from 'air-stream/src/observable/index';
+import getTTMP from "./get-ttmp"
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
 const STATIC_PROJECTS = {
@@ -392,10 +393,6 @@ export class Reducer extends Stream2 {
 		return hook;
 	}
 
-}
-
-function getTTMP() {
-	return globalThis.performance && globalThis.performance.now()|0 || process.hrtime.bigint();
 }
 
 const MAX_MSG_LIVE_TIME_MS = 7000;
