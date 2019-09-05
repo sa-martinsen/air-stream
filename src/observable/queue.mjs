@@ -1,4 +1,3 @@
-import setImmediate from '../set_immediate.mjs';
 import globals from './globals.mjs';
 
 export default class Queue {

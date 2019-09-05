@@ -78,6 +78,15 @@ export class Stream2 {
 			});
 		}
 	}
+
+	at(subscriber) {
+		return this.on( (data, record) => {
+			if(Observable.keys.includes(data)) {
+				return ;
+			}
+			subscriber( data, record );
+		} );
+	}
 	
 	connectable() {
 		return new Connectable( this );
@@ -116,7 +125,11 @@ export class Stream2 {
 					}
 					return e(data, record);
 				}
-				if(!equal(state, data)) {
+				else if(state === EMPTY_OBJECT) {
+					state = data;
+					e(data, record);
+				}
+				else if(!equal(state, data)) {
 					state = data;
 					e(data, record);
 				}
