@@ -326,7 +326,7 @@ export class Reducer extends Stream2 {
 		super(sourcestreams, (e, controller) => {
 			if(state !== EMPTY_OBJECT) {
 				if(state instanceof Stream2) {
-					controller.todisconnect(state.on( e ));
+					controller.to(state.on( e ));
 				}
 				else {
 					const msg = [ state, { ttmp: getTTMP() } ];
