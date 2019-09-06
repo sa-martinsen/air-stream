@@ -1,3 +1,5 @@
+import "./polyfills"
+
 export {
   default as Observable,
   combine,

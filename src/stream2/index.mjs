@@ -342,18 +342,12 @@ export class Reducer extends Stream2 {
 					controller.to(state.on( e ));
 				}
 				else {
-					const msg = [ state, { ttmp: getTTMP() } ];
-					this.quene.push(msg);
-					e( ...msg );
+					e( state, { ttmp: getTTMP() } );
 				}
 			}
 			if(sourcestreams) {
 				controller.todisconnect(sourcestreams.on( (data, record ) => {
 					state = project(state, data);
-					this.quene.push([ state, record ]);
-					if(this.quene.length > 1) {
-						this._normilizeQuene();
-					}
 					e( state, record );
 				} ));
 			}
@@ -364,12 +358,20 @@ export class Reducer extends Stream2 {
 			}
 		});
 		this._activated = false;
-		this.quene = [];
+		this._quene = [];
+	}
+	
+	get quene() {
+		return this._quene;
 	}
 	
 	createEmitter( subscriber ) {
 		if(!this.emitter) {
 			this.emitter = (data, record = { ttmp: getTTMP() }) => {
+				this.quene.push( [ data, record ] );
+				if(this.quene.length > 1) {
+					this._normilizeQuene();
+				}
 				this.subscribers.map( subscriber => subscriber(data, record) );
 			};
 		}
@@ -379,8 +381,8 @@ export class Reducer extends Stream2 {
 	_activate() {
 		if(!this._activated) {
 			super._activate();
+			this._activated = true;
 		}
-		this._activated = true;
 	}
 	
 	_normilizeQuene() {
