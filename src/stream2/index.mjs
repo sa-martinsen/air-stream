@@ -2,12 +2,19 @@ import Observable, {keyA} from 'air-stream/src/observable/index';
 import getTTMP from "./get-ttmp"
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
+let GLOBAL_CONNECTIONS_ID_COUNTER = 1;
 const STATIC_PROJECTS = {
 	STRAIGHT: data => data,
 	AIO: (...args) => args,
 };
 
+const KEY_SIGNALS = new Set(Observable.keys);
+
 export class Stream2 {
+	
+	static isKeySignal(data) {
+		return KEY_SIGNALS.has(data);
+	}
 	
 	constructor(sourcestreams, project, ctx = null) {
 		this.subscribers = [];
@@ -81,7 +88,7 @@ export class Stream2 {
 
 	at(subscriber) {
 		return this.on( (data, record) => {
-			if(Observable.keys.includes(data)) {
+			if(isKeySignal(data)) {
 				return ;
 			}
 			subscriber( data, record );
@@ -95,7 +102,7 @@ export class Stream2 {
 	map(project) {
 		return new Stream2(null, (e, controller) => {
 			controller.to(this.on( (data, record) => {
-				if(Observable.keys.includes(data, record)) {
+				if(isKeySignal(data)) {
 					return e(data, record);
 				}
 				e(project(data), record);
@@ -106,7 +113,7 @@ export class Stream2 {
 	filter(project) {
 		return new Stream2(null, (e, controller) => {
 			controller.to(this.on( (data, record) => {
-				if(Observable.keys.includes(data, record)) {
+				if(isKeySignal(data)) {
 					return e(data, record);
 				}
 				const res = e(project(data));
@@ -119,7 +126,7 @@ export class Stream2 {
 		return new Stream2(null, (e, controller) => {
 			let state = EMPTY_OBJECT;
 			controller.to(this.on( (data, record) => {
-				if(Observable.keys.includes(data, record)) {
+				if(isKeySignal(data)) {
 					if(data === keyA) {
 						state = EMPTY_OBJECT;
 					}
@@ -151,7 +158,7 @@ export class Stream2 {
 			/*</@debug>*/
 			
 			//todo temporary cross ver support
-			if(Observable.keys.includes(data)) {
+			if(isKeySignal(data)) {
 				return ;
 			}
 			
@@ -220,14 +227,14 @@ export class Stream2 {
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
 			controller.todisconnect( ...sourcestreams.map( (stream, i) => {
 				return stream.on( (data, record) => {
-					if(Observable.keys.includes(data)) {
+					if(isKeySignal(data)) {
 						return e( data, record );
 					}
 					sourcestreamsstate[i] = data;
 				} );
 			} ) );
 			controller.to( this.on( (data, record) => {
-				if(Observable.keys.includes(data)) {
+				if(isKeySignal(data)) {
 					return e( data, record );
 				}
 				if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
@@ -244,6 +251,41 @@ export class Stream2 {
 				e(data, record);
 			}));
 		});
+	}
+	
+	/**
+	 * @param {WebSocket} socket - WebSocket connection
+	 * @param {String} stream - Stream name from server
+	 */
+	static fromEndPoint( socket, stream ) {
+		return new Stream2(null, (e, controller) => {
+			const connection = { id: GLOBAL_CONNECTIONS_ID_COUNTER ++ };
+			function onsocketmessagehandler({ data: raw }) {
+				const { data, event, connection: { id } } = JSON.parse(raw);
+				if(event === "data" && id === connection.id) {
+					e( data );
+				}
+			}
+			function onsocketopendhandler() {
+				socket.send(JSON.stringify({ request: "subscribe", stream, connection }));
+				controller.tocommand( ({ request }) => {
+					socket.send( JSON.stringify({ request, connection }) );
+				} );
+			}
+			if(socket.readyState === WebSocket.OPEN) {
+				onsocketopendhandler();
+			}
+			else {
+				socket.addEventListener("open", onsocketopendhandler);
+				controller.todisconnect( () => {
+					socket.removeEventListener("open", onsocketopendhandler);
+				} );
+			}
+			socket.addEventListener("message", onsocketmessagehandler);
+			controller.todisconnect( () => {
+				socket.removeEventListener("message", onsocketmessagehandler);
+			} );
+		} );
 	}
 	
 	static ups(UPS = 100) {
@@ -274,6 +316,7 @@ stream2.combine = Stream2.combine;
 stream2.from = Stream2.from;
 stream2.fromPromise = Stream2.fromPromise;
 stream2.sync = Stream2.sync;
+stream2.fromEndPoint = Stream2.fromEndPoint;
 
 export class Controller {
 	
@@ -410,4 +453,6 @@ export class Reducer extends Stream2 {
 
 }
 
+Stream2.KEY_SIGNALS = KEY_SIGNALS;
+const isKeySignal = Stream2.isKeySignal;
 const MAX_MSG_LIVE_TIME_MS = 7000;

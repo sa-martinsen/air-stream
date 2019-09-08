@@ -1,4 +1,7 @@
+import "./node-perf-hooks"
+
 let cache = -1;
+
 export default function getTTMP() {
 	if(cache === -1) {
 		cache = _getTTMP();
@@ -9,10 +12,4 @@ export default function getTTMP() {
 	return cache;
 }
 
-let _getTTMP = null;
-if(globalThis.performance) {
-	_getTTMP = () => globalThis.performance.now() | 0;
-}
-else {
-	_getTTMP = () => process.hrtime();
-}
+const _getTTMP = () => performance.now() | 0;
