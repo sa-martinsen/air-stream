@@ -45,50 +45,63 @@ export const streamEqual = (done, source, data = [], options = {}) => {
   expect.hasAssertions();
 
   options = { ...defaultOptions, ...options };
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
+  const start = Date.now();
 
-    const lastMsgTime = data.reduce((acc, msg) => msg.t > acc ? msg.t : acc, 0);
-    jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
-    const doneTimer = setTimeout(() => {
-      expect(data.some((assert) => !assert.pass)).toBeFalsy();
-      resolve();
-      done();
-    }, lastMsgTime + options.delta);
+  const lastMsgTime = data.reduce((acc, msg) => !msg.t ? 0 : msg.t > acc ? msg.t : acc, 0);
+  jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
+  const doneTimer = setTimeout(() => {
+    expect(data.some((assert) => !assert.pass)).toBeFalsy();
+    done();
+  }, options.timeout || lastMsgTime + options.delta);
 
-    source.on(msg => {
-      data.map((assert) => {
-        if (!assert.pass) {
-          const now = Date.now() - start;
+  return source.on(msg => {
+    data.map((assert) => {
+      if (!assert.pass) {
+        const now = Date.now() - start;
+        if (assert.t) {
           assert.pass = deepEqual(assert.data, msg) && Math.abs(assert.t - now) < options.delta;
+        } else {
+          assert.pass = deepEqual(assert.data, msg)
         }
-      });
+      }
     });
   });
 };
 
 const DEFAULT_OPTIONS = {
-	delta: 100, // ms
-	timeout: null
+  delta: 100, // ms
+  timeout: null
 };
 
+
 export const streamEqualStrict = (done, source, data = [], options = {}) => {
-  expect.assertions(data.length * 2);
+  const counterCallback = jest.fn();
+
+  const assertions = data.reduce((acc, { data }) => acc + (data ? 1 : 0), 0);
+  expect.assertions(assertions * 2 + 1);
+
   options = { ...DEFAULT_OPTIONS, ...options };
   const start = Date.now();
   data.sort((a, b) => a.t - b.t);
   const lastMsgTime = data.reduce((acc, msg) => msg.t > acc ? msg.t : acc, 0);
   jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
   const doneTimer = setTimeout(() => {
+    expect(counterCallback).toHaveBeenCalledTimes(assertions);
     done();
-  }, lastMsgTime + options.delta);
+  }, options.timeout || (lastMsgTime + options.delta));
+
   return source.on(msg => {
     const assert = data.shift();
+
+    if (data[0] && data[0].disconnect) {
+      source.on(([a, b]) => { })();
+    }
     if (typeof assert === 'undefined') {
       clearTimeout(doneTimer);
       done();
-    } else {
+    } else if (assert.data) {
       const now = Date.now() - start;
+      counterCallback();
       expect(assert.data).toEqual(msg);
       expect(Math.abs(assert.t - now)).toBeLessThanOrEqual(options.delta);
     }
