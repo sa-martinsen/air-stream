@@ -48,7 +48,7 @@ export const streamEqual = (done, source, data = [], options = {}) => {
   const start = Date.now();
 
   const lastMsgTime = data.reduce((acc, msg) => !msg.t ? 0 : msg.t > acc ? msg.t : acc, 0);
-  jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
+  jest.setTimeout(options.timeout || (lastMsgTime + options.delta + 1));
   const doneTimer = setTimeout(() => {
     expect(data.some((assert) => !assert.pass)).toBeFalsy();
     done();
@@ -84,7 +84,7 @@ export const streamEqualStrict = (done, source, data = [], options = {}) => {
   const start = Date.now();
   data.sort((a, b) => a.t - b.t);
   const lastMsgTime = data.reduce((acc, msg) => msg.t > acc ? msg.t : acc, 0);
-  jest.setTimeout(options.timeout || (lastMsgTime + options.delta));
+  jest.setTimeout(options.timeout || (lastMsgTime + options.delta + 1));
   const doneTimer = setTimeout(() => {
     expect(counterCallback).toHaveBeenCalledTimes(assertions);
     done();
