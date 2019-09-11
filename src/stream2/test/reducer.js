@@ -1,35 +1,42 @@
-import {expect} from "chai";
-import Observable, {keyA, keyF} from "../index.mjs";
-import {series} from "./../../utils.mjs"
+import { Reducer, stream2 as stream } from '../index';
+import { streamEqualStrict } from '../../utils';
 
 describe('reducer', function () {
 
-    it('simple1', (done) => {
-
-        done = series(done, [
-            evt => expect(evt).to.deep.equal( Observable.keyF ),
-            evt => expect(evt).to.deep.equal( 0 ),
-            evt => expect(evt).to.deep.equal( 1 ),
-            evt => expect(evt).to.deep.equal( 3 ),
-            evt => expect(evt).to.deep.equal( 6 ),
+    test('clear reducer construct with initialized stream', (done) => {
+        const state = stream( [], function (e) {
+            setTimeout(() => e({ready: true}), 10);
+        } );
+        const reducer = new Reducer(null, null, state);
+        streamEqualStrict(done, reducer, [
+            {data: {ready: true}}
         ]);
+    });
 
-        const source = new Observable( function (emt) {
-            emt.kf();
+    test('simple1', (done) => {
+        const source = stream(null, function (emt) {
             emt(0, { rid: 0 });
             emt(1, { rid: 1 });
             emt(2, { rid: 2 });
             emt(3, { rid: 3 });
         } );
 
-        source
-            .reducer( (acc, next) => {
-                return acc + next;
-            } )
-            .on( done );
+        const assertions = [
+            {data: 0},
+            {data: 0},
+            {data: 1},
+            {data: 3},
+            {data: 6},
+        ];
 
+        const reducer = new Reducer(source, (acc, next) => {
+            return acc + next;
+        }, 0);
+
+        streamEqualStrict(done, reducer, assertions);
     });
 
+/*
     it('abort action', (done) => {
 
         done = series(done, [
@@ -62,6 +69,7 @@ describe('reducer', function () {
             .on( done );
 
     });
+*/
 /*
     it('refresh history', (done) => {
 

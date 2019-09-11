@@ -1,5 +1,5 @@
 import { stream2 as stream } from "../index.mjs";
-import {series} from "../../utils.mjs"
+import {series, streamEqualStrict} from "../../utils.mjs";
 
 describe('constructor', function () {
 
