@@ -75,20 +75,26 @@ const DEFAULT_OPTIONS = {
 
 
 export const streamEqualStrict = (done, source, data = [], options = {}) => {
+  //set default timeout
+  jest.setTimeout(5000);
   const counterCallback = jest.fn();
 
   const assertions = data.reduce((acc, { data }) => acc + (data ? 1 : 0), 0);
-  expect.assertions(assertions * 2 + 1);
+  const assertionsWithTCount = data.filter(assertion => assertion.t).length;
+  // expect.assertions(assertions + assertionsWithTCount + 1);
 
   options = { ...DEFAULT_OPTIONS, ...options };
   const start = Date.now();
   data.sort((a, b) => a.t - b.t);
   const lastMsgTime = data.reduce((acc, msg) => msg.t > acc ? msg.t : acc, 0);
-  jest.setTimeout(options.timeout || (lastMsgTime + options.delta + 1));
-  const doneTimer = setTimeout(() => {
-    expect(counterCallback).toHaveBeenCalledTimes(assertions);
-    done();
-  }, options.timeout || (lastMsgTime + options.delta));
+  let doneTimer;
+  if (lastMsgTime) {
+    jest.setTimeout(options.timeout || (lastMsgTime + options.delta + 1));
+    doneTimer = setTimeout(() => {
+      expect(counterCallback).toHaveBeenCalledTimes(assertions);
+      done();
+    }, options.timeout || (lastMsgTime + options.delta));
+  }
 
   return source.on(msg => {
     const assert = data.shift();
@@ -103,7 +109,13 @@ export const streamEqualStrict = (done, source, data = [], options = {}) => {
       const now = Date.now() - start;
       counterCallback();
       expect(assert.data).toEqual(msg);
-      expect(Math.abs(assert.t - now)).toBeLessThanOrEqual(options.delta);
+      if (assert.t) {
+        expect(Math.abs(assert.t - now)).toBeLessThanOrEqual(options.delta);
+      }
+    }
+    if (data.length === 0) {
+      expect(counterCallback).toHaveBeenCalledTimes(assertions);
+      done();
     }
   });
 };

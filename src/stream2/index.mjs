@@ -117,7 +117,7 @@ export class Stream2 {
 				if(isKeySignal(data)) {
 					return e(data, record);
 				}
-				const res = e(project(data));
+				const res = project(data);
 				res && e(data, record);
 			} ));
 		});

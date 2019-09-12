@@ -1,72 +1,56 @@
-import {describe, it} from "mocha"
-import { merge, stream, keyF } from "../../index.mjs"
-import {expect} from "chai"
-import {series} from "./../../utils.mjs"
+import { stream2 as stream } from '../index';
+import { streamEqualStrict } from '../../utils';
 
-describe('merge', function () {
+describe('merge', () => {
+  test('merge', (done) => {
 
-    it('simple', (done) => {
+    const expected = [
+      {
+        data: { a: 1 }
+      },
+      {
+        data: 12
+      },
+      {
+        data: 21
+      },
+      {
+        data: 13
+      },
+      {
+        data: 22
+      },
+      {
+        data: 14
+      },
+      {
+        data: 23
+      },
+      {
+        data: 24
+      },
+      {
+        data: 25
+      },
+    ];
 
-        done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
-        ]);
-
-        const source = stream( emt => {
-            emt("a1");
-            emt("b2");
-            emt("c3");
-            emt("d4");
-        } );
-
-        const res = merge([source.filter(x => x[1]%2)], [source.filter(x => !(x[1]%2))]);
-        res.on( done );
-
+    const source1 = stream([], function (e) {
+      e({ a: 1 });
+      setTimeout(() => e(12), 200);
+      setTimeout(() => e(13), 300);
+      setTimeout(() => e(14), 400);
+    });
+    const source2 = stream([], function (e) {
+      setTimeout(() => e(21), 250);
+      setTimeout(() => e(22), 300);
+      setTimeout(() => e(23), 400);
+      setTimeout(() => e(24), 600);
+      setTimeout(() => e(25), 700);
     });
 
-    it('without connectable', (done) => {
+    const merged = stream.merge([source1, source2]);
+    streamEqualStrict(done, merged, expected);
 
-        done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "d4" ),
-        ]);
-
-        const source = stream( emt => {
-            emt("a1");
-            emt("b2");
-            emt("c3");
-            emt("d4");
-        } );
-
-        const res = merge([], [source.filter(x => !(x[1]%2))]);
-        res.on( done );
-
-    });
-
-    it('without unconnectable', (done) => {
-
-        done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
-        ]);
-
-        const source = stream( emt => {
-            emt("a1");
-            emt("b2");
-            emt("c3");
-            emt("d4");
-        } );
-
-        const res = merge([source.filter(x => x[1]%2), source.filter(x => !(x[1]%2))], []);
-        res.on( done );
-
-    });
+  });
 
 });

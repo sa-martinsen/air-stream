@@ -1,5 +1,5 @@
-import {series} from "../../utils.mjs"
-import { stream2 as stream } from "../../index.mjs"
+import {series} from "../../utils.mjs";
+import { stream2 as stream } from "../../index.mjs";
 
 describe('controller', function () {
 
