@@ -22,7 +22,6 @@ export class Stream2 {
 		this.project = project;
 		this.ctx = ctx;
 		this.sourcestreams = sourcestreams;
-		this.controller = this.createController();
 	}
 	
 	static fromevent(target, event) {
@@ -70,20 +69,18 @@ export class Stream2 {
 	
 	on( subscriber ) {
 		this.subscribers.push(subscriber);
-		this._activate( subscriber );
+		const controller = this._activate( subscriber );
 		return ({ disconnect = false, ...args } = { disconnect: true }) => {
 			if(disconnect) {
-				const removed = this.subscribers.indexOf(subscriber);
-				/*<@debug>*/
-				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
-				/*</@debug>*/
-				this.subscribers.splice(removed, 1);
+				this._deactivate( subscriber, controller );
 			}
-			this.controller.send({
-				//todo cross ver support
-				dissolve: disconnect,
-				disconnect, ...args
-			});
+			else {
+				controller.send({
+					...args,
+					dissolve: false,
+					disconnect: false,
+				});
+			}
 		}
 	}
 
@@ -146,8 +143,23 @@ export class Stream2 {
 	}
 	
 	_activate( subscriber ) {
-		const emmiter = this.createEmitter( subscriber );
-		this.project.call(this.ctx, emmiter, this.controller);
+		const emitter = this.createEmitter( subscriber );
+		const controller = this.createController();
+		this.project.call(this.ctx, emitter, controller);
+		return controller;
+	}
+
+	_deactivate( subscriber, controller ) {
+		const removed = this.subscribers.indexOf(subscriber);
+		/*<@debug>*/
+		if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+		/*</@debug>*/
+		this.subscribers.splice(removed, 1);
+		controller.send({
+			//todo cross ver support
+			dissolve: true,
+			disconnect: true,
+		});
 	}
 	
 	createEmitter( subscriber ) {
@@ -273,7 +285,7 @@ export class Stream2 {
 			let hook = remoteservicecontroller.on( ({ event, data, connection: { id } }, record) => {
 				if(event === "remote-service-ready") {
 					hook({
-						type: "subscribe",
+						request: "subscribe",
 						stream,
 						connection,
 					});
@@ -325,24 +337,24 @@ export class RemouteService extends Stream2 {
 	 */
 	static fromWebSocketConnection ({host, port}) {
 		let websocketconnection = null;
-		let remouteserviceconnectionstatus = "pending";
+		let remouteserviceconnectionstatus = null;
 		return new RemouteService(null, (e, controller) => {
 			if(!websocketconnection) {
 				websocketconnection = new WebSocket(`ws://${host}:${port}`);
 			}
 			if(remouteserviceconnectionstatus === "ready") {
-				e( { event: "remoute-service-ready", connection: { id: -1 }, data: null } );
+				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
 			}
 			function onsocketmessagehandler({ data: raw }) {
 				const msg = JSON.parse(raw);
-				if(msg.event === "remoute-service-ready") {
+				if(msg.event === "remote-service-ready") {
 					remouteserviceconnectionstatus = "ready";
 					e( msg );
 				}
 			}
 			function onsocketopendhandler() {
-				controller.tocommand( ({ request }) => {
-					websocketconnection.send( JSON.stringify({ request, connection }) );
+				controller.tocommand( ({ disconnect, dissolve, ...data }) => {
+					websocketconnection.send( JSON.stringify(data) );
 				} );
 			}
 			if(websocketconnection.readyState === WebSocket.OPEN) {
@@ -472,52 +484,68 @@ export class Reducer extends Stream2 {
 				/*</@debug>*/
 			}
 		});
-		this._activated = false;
-		this._quene = [];
+		this._activated = null;
+		this._queue = [];
+		this.emitter = null;
+		this.controller = null;
 	}
 	
-	get quene() {
-		return this._quene;
+	get queue() {
+		return this._queue;
 	}
 	
 	createEmitter( subscriber ) {
 		if(!this.emitter) {
 			this.emitter = (data, record = { ttmp: getTTMP() }) => {
-				this.quene.push( [ data, record ] );
-				if(this.quene.length > 1) {
-					this._normilizeQuene();
+				this.queue.push( [ data, record ] );
+				if(this.queue.length > 1) {
+					this._normalizeQueue();
 				}
 				this.subscribers.map( subscriber => subscriber(data, record) );
 			};
 		}
 		return this.emitter;
 	}
+
+	createController( ) {
+		if(!this.controller) {
+			this.controller = super.createController();
+		}
+		return this.controller;
+	}
 	
 	_activate() {
 		if(!this._activated) {
-			super._activate();
-			this._activated = true;
+			this._activated = super._activate();
+		}
+		return this._activated;
+	}
+
+	_deactivate(subscriber, controller) {
+		if(this._activated && this.subscribers.length === 1) {
+			super._deactivate( subscriber, controller );
+			this._activated = null;
 		}
 	}
 	
-	_normilizeQuene() {
+	_normalizeQueue() {
 		const currentTTMP = getTTMP();
-		let firstUnobseloteMSGIndex = this.quene
+		let firstActualMsgIndex = this.queue
 			.findIndex( ( [, {ttmp}]) => ttmp > currentTTMP - MAX_MSG_LIVE_TIME_MS );
-		if(firstUnobseloteMSGIndex === this.quene.length - 1) {
-			firstUnobseloteMSGIndex -- ;
+		if(firstActualMsgIndex === this.queue.length - 1) {
+      firstActualMsgIndex -- ;
 		}
-		if(firstUnobseloteMSGIndex > 0) {
-			this.quene.splice( 0, firstUnobseloteMSGIndex + 1);
+		if(firstActualMsgIndex > 0) {
+			this.queue.splice( 0, firstActualMsgIndex + 1);
 		}
 		else {
-			this.quene.splice( 0, this.quene.length - 1);
+			this.queue.splice( 0, this.queue.length - 1);
 		}
 	}
 	
 	on( subscriber ) {
 		const hook = super.on( subscriber );
-		this.quene.map( ([data, record]) =>
+		this.queue.map( ([data, record]) =>
 			this.subscribers.map(subscriber => subscriber(data, record))
 		);
 		return hook;

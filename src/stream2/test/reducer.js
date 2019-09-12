@@ -2,7 +2,7 @@ import { Reducer, stream2 as stream } from '../index';
 import { streamEqualStrict } from '../../utils';
 
 describe('reducer', function () {
-
+/*
     test('clear reducer construct with initialized stream', (done) => {
         const state = stream( [], function (e) {
             setTimeout(() => e({ready: true}), 10);
@@ -34,6 +34,26 @@ describe('reducer', function () {
         }, 0);
 
         streamEqualStrict(done, reducer, assertions);
+    });
+*/
+    test('several disconnect', (done) => {
+        const source = stream(null, function (e) {
+            e(0);
+        } );
+
+        const store = source
+          .reduceF( { count: 0 }, ( { count } ) =>  ({ count: count + 1 })  );
+
+        const one = store.on( () => {} );
+        const two = store.on( () => {} );
+
+        debugger;
+
+        one();
+        two();
+
+        done();
+
     });
 
 /*
