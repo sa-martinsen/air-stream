@@ -147,9 +147,8 @@ export class Stream2 {
 		});
 	}
 	
-	_activate( subscriber ) {
+	_activate( subscriber, controller = this.createController() ) {
 		const emitter = this.createEmitter( subscriber );
-		const controller = this.createController();
 		this.project.call(this.ctx, emitter, controller);
 		return controller;
 	}
@@ -351,6 +350,9 @@ export class RemouteService extends Stream2 {
 					remouteserviceconnectionstatus = "ready";
 					e( msg );
 				}
+				else if( msg.event === "data") {
+					e( msg );
+				}
 			}
 			function onsocketopendhandler() {
 				controller.tocommand( ({ disconnect, dissolve, ...data }) => {
@@ -419,11 +421,13 @@ export class Connectable extends Stream2 {
 	}
 	
 	connect() {
-		this._activations.map( subscriber => super._activate(subscriber) );
+		this._activations.map( ([ subscriber, controller ]) => super._activate(subscriber, controller) );
 	}
 	
 	_activate( subscriber ) {
-		this._activations.push( subscriber );
+		const controller = this.createController();
+		this._activations.push( [ subscriber, controller ] );
+		return controller;
 	}
 
 }
@@ -461,7 +465,9 @@ export class Reducer extends Stream2 {
 			let srvRequesterHook = null;
 			if(state !== EMPTY_OBJECT) {
 				if(type === 1) {
-					controller.to(srvRequesterHook = state.on( e ));
+					controller.to(srvRequesterHook = state.on( (data) => {
+						e( state = data );
+					} ));
 				}
 				else {
 					e( state, { ttmp: getTTMP() } );
