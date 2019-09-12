@@ -72,6 +72,11 @@ export class Stream2 {
 		const controller = this._activate( subscriber );
 		return ({ disconnect = false, ...args } = { disconnect: true }) => {
 			if(disconnect) {
+				const removed = this.subscribers.indexOf(subscriber);
+				/*<@debug>*/
+				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+				/*</@debug>*/
+				this.subscribers.splice(removed, 1);
 				this._deactivate( subscriber, controller );
 			}
 			else {
@@ -150,11 +155,6 @@ export class Stream2 {
 	}
 
 	_deactivate( subscriber, controller ) {
-		const removed = this.subscribers.indexOf(subscriber);
-		/*<@debug>*/
-		if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
-		/*</@debug>*/
-		this.subscribers.splice(removed, 1);
 		controller.send({
 			//todo cross ver support
 			dissolve: true,
@@ -522,7 +522,7 @@ export class Reducer extends Stream2 {
 	}
 
 	_deactivate(subscriber, controller) {
-		if(this._activated && this.subscribers.length === 1) {
+		if(this._activated && !this.subscribers.length) {
 			super._deactivate( subscriber, controller );
 			this._activated = null;
 		}
