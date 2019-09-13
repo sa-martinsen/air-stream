@@ -41,6 +41,12 @@ export class Stream2 {
 		return new Reducer( this, project, state);
 	}
 
+	slave() {
+		return new Stream2(null, (e, controller) => {
+			controller.to( this.on( ( data, record ) => e(data, { ...record, slave: true }) ) );
+		})
+	}
+
 	/**
 	 * @param {Promise} source - Input source
 	 * @param {Function} project - Mapper project function
@@ -236,11 +242,13 @@ export class Stream2 {
 	
 	withlatest(sourcestreams = [], project = STATIC_PROJECTS.AIO) {
 		return new Stream2( null, (e, controller) => {
+			let slave = false;
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
 			controller.todisconnect( ...sourcestreams.map( (stream, i) => {
 				return stream.on( (data, record) => {
+					if(record.slave) slave = true;
 					if(isKeySignal(data)) {
-						return e( data, record );
+						return e( data, { ...record, slave } );
 					}
 					sourcestreamsstate[i] = data;
 				} );
@@ -250,7 +258,7 @@ export class Stream2 {
 					return e( data, record );
 				}
 				if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
-					e(project(data, ...sourcestreamsstate), record);
+					e(project(data, ...sourcestreamsstate), { ...record, slave });
 				}
 			} ) );
 		} );
@@ -299,7 +307,10 @@ export class Stream2 {
 					e(data, { ...record, grid: -1 });
 				}
 			} );
-			controller.to(hook);
+			controller.tocommand(({ dissolve, disconnect, ...data }) => {
+				hook({ request: "command", data, connection });
+			});
+			controller.todisconnect(hook);
 		} );
 	}
 	
@@ -477,9 +488,15 @@ export class Reducer extends Stream2 {
 				controller.todisconnect(sourcestreams.on( (data, record ) => {
 					state = project(state, data);
 					const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
-					record = { ...record, grid, confirmed: !type };
+					const needConfirmation = type === 1 && record.slave;
+					if(needConfirmation) {
+						record = { ...record, slave: false, grid, confirmed: !type };
+					}
+					else {
+						record = { ...record, grid, confirmed: !type };
+					}
 					e( state, record );
-					if(type === 1) {
+					if(needConfirmation) {
 						srvRequesterHook({ grid, data, record });
 					}
 				} ));
