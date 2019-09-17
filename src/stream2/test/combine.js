@@ -1,108 +1,137 @@
-import {expect} from "chai"
-import {series} from "../../utils.mjs"
-import { combine, stream, keyF } from "../../index.mjs"
+import { stream2 as stream } from '../index';
+import { streamEqualStrict } from '../../utils';
 
-describe('combine', function () {
+describe('combine', () => {
 
-    it('simple1', (done) => {
+    test('simple1', (done) => {
+        const expected = [
+            { data: [2, 1] },
+            { data: [3, 1] },
+            { data: [3, 2] },
+            { data: [4, 2] },
+            { data: [4, 3] },
+            // { disconnect: true },
+        ];
+        const source1 = stream([], function (e) {
+            e({ a: 1 });
+            setTimeout(() => e(2), 200);
+            setTimeout(() => e(3), 300);
+            setTimeout(() => e(4), 400);
+        });
+        const source2 = stream([], function (e) {
+            setTimeout(() => e(1), 250);
+            setTimeout(() => e(2), 300);
+            setTimeout(() => e(3), 400);
+        });
+        const combined = stream.combine([source1, source2]);
+        streamEqualStrict(done, combined, expected);
+    });
 
-        done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
-            evt => expect(evt).to.deep.equal([1, 2]),
-            evt => expect(evt).to.deep.equal([1, 3]),
-            evt => expect(evt).to.deep.equal([4, 3]),
-            evt => expect(evt).to.deep.equal([5, 3]),
-            evt => expect(evt).to.deep.equal([5, 6]),
-        ]);
-
-        const source = stream(function (emt) {
+    test('simple2', (done) => {
+        const assertions = [
+            {data: [1, 2]},
+            {data: [1, 3]},
+            {data: [4, 3]},
+            {data: [5, 3]},
+            {data: [5, 6]},
+        ];
+        const source = stream(null, function (emt) {
             emt({count: 1, path: "a"});
             emt({count: 2, path: "b"});
             emt({count: 3, path: "b"});
             emt({count: 4, path: "a"});
-            setTimeout( () => emt({count: 5, path: "a"}) );
-            setTimeout( () => emt({count: 6, path: "b"}) );
+            emt({count: 5, path: "a"});
+            emt({count: 6, path: "b"});
         });
-
         const a = source.filter( ({path}) => path === "a" );
         const b = source.filter( ({path}) => path === "b" );
+        streamEqualStrict(
+            done,
+            stream.combine([a, b], ({count: a}, {count: b}) => [a, b] ),
+            assertions,
+        );
+    });
 
-        combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+    test('simple disconnect', (done) => {
+        const source1 = stream([], function (e, controller) {
+            e(1);
+            const sid = setTimeout(() => e(2));
+            controller.todisconnect( () => clearTimeout(sid) );
+        });
+        const source2 = stream([], function (e, controller) {
+            e(2);
+            const sid = setTimeout(() => e(1));
+            controller.todisconnect( () => clearTimeout(sid) );
+        });
+        const combined = stream.combine([source1, source2]);
+        combined.on( ([a, b]) => { } )();
+        setTimeout( done, 10 );
 
     });
 
-    it('combine key', (done) => {
+	test('empty source combiner', (done) => {
+		const combined = stream.combine([]);
+		streamEqualStrict(done, combined, [ { data: [] } ]);
+	});
 
-        done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
-        ]);
-
-        const source = stream(function (emt) {
-            emt.kf();
-        });
-
-        const a = source.filter( ({path}) => path === "a" );
-        const b = source.filter( ({path}) => path === "b" );
-
-        combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
-
-    });
-
-    it('to many streams', (done) => {
-
-        done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
-            evt => expect(evt).to.deep.equal(["d", "d", "d", "d"]),
-        ]);
-
-        const a = stream(function (emt) {
+    test('to many streams', (done) => {
+        const a = stream(null, function (emt) {
             emt("a");
             emt("b");
             emt("c");
             setTimeout(() => emt("d"), 10);
         });
-
-        const b = stream(function (emt) {
+        const b = stream(null, function (emt) {
             emt("c");
             emt("d");
             setTimeout(() => emt("e"), 10);
         });
-
-        const c = stream(function (emt) {
+        const c = stream(null, function (emt) {
             emt("c");
             setTimeout(() => emt("d"), 10);
         });
-
-        const d = stream(function (emt) {
+        const d = stream(null, function (emt) {
             emt("a");
             emt("b");
             emt("d");
         });
-
-        combine([a, b, c, d].map(obs => obs.filter(v => v === "d"))).on( done );
-
+        streamEqualStrict(
+            done,
+            stream.combine([a, b, c, d].map(obs => obs.filter(v => v === "d"))),
+            [{data: ["d", "d", "d", "d"]}],
+        );
     });
 
-    it('loop', (done) => {
-
-        done = series(done, [
-            evt => expect(evt).to.deep.equal(keyF),
-            //evt => expect(evt).to.deep.equal(["b1", "b", "b"]),
-            evt => expect(evt).to.deep.equal(["b1", "b", "c"]),
-            evt => expect(evt).to.deep.equal(["c1", "b", "c"]),
-        ]);
-
-        const source = stream(function (emt) {
+    test('loop', (done) => {
+        const assertions = [
+            // {data: ["b1", "b", "b"]},
+            {data: ["b1", "b", "c"]},
+            {data: ["c1", "b", "c"]},
+        ];
+        const source = stream(null, function (emt) {
             emt("a");
             emt("b");
             emt("c");
         });
-
         const a = source.map( evt => evt + "1");
         const b = source.filter( evt => evt === "b");
-
-        combine([a, b, source] ).on( done );
-
+        streamEqualStrict(done, stream.combine([a, b, source] ), assertions);
     });
 
+    // test('combine key', (done) => {
+    //
+    //     done = series(done, [
+    //         evt => expect(evt).to.deep.equal(keyF),
+    //     ]);
+    //
+    //     const source = stream(function (emt) {
+    //         emt.kf();
+    //     });
+    //
+    //     const a = source.filter( ({path}) => path === "a" );
+    //     const b = source.filter( ({path}) => path === "b" );
+    //
+    //     combine([a, b], ({count: a}, {count: b}) => [a, b] ).on( done );
+    //
+    // });
 });

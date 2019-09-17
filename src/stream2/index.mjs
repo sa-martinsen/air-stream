@@ -1,8 +1,9 @@
-import Observable, {keyA} from 'air-stream/src/observable/index';
-import getTTMP from "./get-ttmp"
+import Observable, {keyA} from '../observable/index.mjs'
+import getTTMP from "./get-ttmp.mjs"
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
 let GLOBAL_CONNECTIONS_ID_COUNTER = 1;
+let GLOBAL_REQUEST_ID_COUNTER = 1;
 const STATIC_PROJECTS = {
 	STRAIGHT: data => data,
 	AIO: (...args) => args,
@@ -21,7 +22,6 @@ export class Stream2 {
 		this.project = project;
 		this.ctx = ctx;
 		this.sourcestreams = sourcestreams;
-		this.controller = this.createController();
 	}
 	
 	static fromevent(target, event) {
@@ -39,6 +39,12 @@ export class Stream2 {
 	
 	reduceF(state, project) {
 		return new Reducer( this, project, state);
+	}
+
+	slave() {
+		return new Stream2(null, (e, controller) => {
+			controller.to( this.on( ( data, record ) => e(data, { ...record, slave: true }) ) );
+		})
 	}
 
 	/**
@@ -69,7 +75,7 @@ export class Stream2 {
 	
 	on( subscriber ) {
 		this.subscribers.push(subscriber);
-		this._activate( subscriber );
+		const controller = this._activate( subscriber );
 		return ({ disconnect = false, ...args } = { disconnect: true }) => {
 			if(disconnect) {
 				const removed = this.subscribers.indexOf(subscriber);
@@ -77,12 +83,15 @@ export class Stream2 {
 				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
 				/*</@debug>*/
 				this.subscribers.splice(removed, 1);
+				this._deactivate( subscriber, controller );
 			}
-			this.controller.send({
-				//todo cross ver support
-				dissolve: disconnect,
-				disconnect, ...args
-			});
+			else {
+				controller.send({
+					...args,
+					dissolve: false,
+					disconnect: false,
+				});
+			}
 		}
 	}
 
@@ -116,7 +125,7 @@ export class Stream2 {
 				if(isKeySignal(data)) {
 					return e(data, record);
 				}
-				const res = e(project(data));
+				const res = project(data);
 				res && e(data, record);
 			} ));
 		});
@@ -144,9 +153,18 @@ export class Stream2 {
 		});
 	}
 	
-	_activate( subscriber ) {
-		const emmiter = this.createEmitter( subscriber );
-		this.project.call(this.ctx, emmiter, this.controller);
+	_activate( subscriber, controller = this.createController() ) {
+		const emitter = this.createEmitter( subscriber );
+		this.project.call(this.ctx, emitter, controller);
+		return controller;
+	}
+
+	_deactivate( subscriber, controller ) {
+		controller.send({
+			//todo cross ver support
+			dissolve: true,
+			disconnect: true,
+		});
 	}
 	
 	createEmitter( subscriber ) {
@@ -224,11 +242,13 @@ export class Stream2 {
 	
 	withlatest(sourcestreams = [], project = STATIC_PROJECTS.AIO) {
 		return new Stream2( null, (e, controller) => {
+			let slave = false;
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
 			controller.todisconnect( ...sourcestreams.map( (stream, i) => {
 				return stream.on( (data, record) => {
+					if(record.slave) slave = true;
 					if(isKeySignal(data)) {
-						return e( data, record );
+						return e( data, { ...record, slave } );
 					}
 					sourcestreamsstate[i] = data;
 				} );
@@ -238,7 +258,7 @@ export class Stream2 {
 					return e( data, record );
 				}
 				if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
-					e(project(data, ...sourcestreamsstate), record);
+					e(project(data, ...sourcestreamsstate), { ...record, slave });
 				}
 			} ) );
 		} );
@@ -252,39 +272,45 @@ export class Stream2 {
 			}));
 		});
 	}
+
+	/**
+	 * Кеширует линию потока, чтобы новые стримы не создавались
+	 */
+	endpoint() {
+		return new EndPoint( null, (e, controller) => {
+			controller.to(this.on(e));
+		} );
+	}
 	
 	/**
-	 * @param {WebSocket} socket - WebSocket connection
-	 * @param {String} stream - Stream name from server
+	 * @param {RemouteService} remoteservicecontroller - Remoute service controller connection
+	 * @param {Object} stream - Stream name from server
 	 */
-	static fromEndPoint( socket, stream ) {
+	static fromRemouteService( remoteservicecontroller, stream ) {
 		return new Stream2(null, (e, controller) => {
 			const connection = { id: GLOBAL_CONNECTIONS_ID_COUNTER ++ };
-			function onsocketmessagehandler({ data: raw }) {
-				const { data, event, connection: { id } } = JSON.parse(raw);
-				if(event === "data" && id === connection.id) {
-					e( data );
+			let hook = remoteservicecontroller.on( ({ event, data, connection: { id } }, record) => {
+				if(event === "remote-service-ready") {
+					hook({
+						request: "subscribe",
+						stream,
+						connection,
+					});
 				}
-			}
-			function onsocketopendhandler() {
-				socket.send(JSON.stringify({ request: "subscribe", stream, connection }));
-				controller.tocommand( ({ request }) => {
-					socket.send( JSON.stringify({ request, connection }) );
-				} );
-			}
-			if(socket.readyState === WebSocket.OPEN) {
-				onsocketopendhandler();
-			}
-			else {
-				socket.addEventListener("open", onsocketopendhandler);
-				controller.todisconnect( () => {
-					socket.removeEventListener("open", onsocketopendhandler);
-				} );
-			}
-			socket.addEventListener("message", onsocketmessagehandler);
-			controller.todisconnect( () => {
-				socket.removeEventListener("message", onsocketmessagehandler);
+				else if(event === "reinitial-state" && connection.id === id ) {
+					e(data, { ...record, grid: 0 });
+				}
+				else if(event === "data" && connection.id === id ) {
+					e(data, { ...record, grid: -1 });
+				}
+				else if(event === "result" && connection.id === id ) {
+					e(data, { ...record, grid: -1 });
+				}
 			} );
+			controller.tocommand(({ dissolve, disconnect, ...data }) => {
+				hook({ request: "command", data, connection });
+			});
+			controller.todisconnect(hook);
 		} );
 	}
 	
@@ -309,14 +335,58 @@ export class Stream2 {
 }
 
 export const stream2 = (...args) => new Stream2(...args);
-stream2.merge = Stream2.merge;
-stream2.fromevent = Stream2.fromevent;
-stream2.ups = Stream2.ups;
-stream2.combine = Stream2.combine;
-stream2.from = Stream2.from;
-stream2.fromPromise = Stream2.fromPromise;
-stream2.sync = Stream2.sync;
-stream2.fromEndPoint = Stream2.fromEndPoint;
+//static props recalc to stream2
+Object.getOwnPropertyNames(Stream2)
+	.filter(prop => typeof Stream2[prop] === "function")
+	.map( prop => stream2[prop] = Stream2[prop] );
+
+export class RemouteService extends Stream2 {
+
+	/**
+	 * @param {host, port} websocketconnection settings
+	 */
+	static fromWebSocketConnection ({host, port}) {
+		let websocketconnection = null;
+		let remouteserviceconnectionstatus = null;
+		return new RemouteService(null, (e, controller) => {
+			if(!websocketconnection) {
+				websocketconnection = new WebSocket(`ws://${host}:${port}`);
+			}
+			if(remouteserviceconnectionstatus === "ready") {
+				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
+			}
+			function onsocketmessagehandler({ data: raw }) {
+				const msg = JSON.parse(raw);
+				if(msg.event === "remote-service-ready") {
+					remouteserviceconnectionstatus = "ready";
+					e( msg );
+				}
+				else if( msg.event === "data") {
+					e( msg );
+				}
+			}
+			function onsocketopendhandler() {
+				controller.tocommand( ({ disconnect, dissolve, ...data }) => {
+					websocketconnection.send( JSON.stringify(data) );
+				} );
+			}
+			if(websocketconnection.readyState === WebSocket.OPEN) {
+				onsocketopendhandler();
+			}
+			else {
+				websocketconnection.addEventListener("open", onsocketopendhandler);
+				controller.todisconnect( () => {
+					socket.removeEventListener("open", onsocketopendhandler);
+				} );
+			}
+			websocketconnection.addEventListener("message", onsocketmessagehandler);
+			controller.todisconnect( () => {
+				websocketconnection.removeEventListener("message", onsocketmessagehandler);
+			} );
+		} );
+	}
+
+}
 
 export class Controller {
 	
@@ -362,11 +432,33 @@ export class Connectable extends Stream2 {
 	}
 	
 	connect() {
-		this._activations.map( subscriber => super._activate(subscriber) );
+		this._activations.map( ([ subscriber, controller ]) => super._activate(subscriber, controller) );
 	}
 	
 	_activate( subscriber ) {
-		this._activations.push( subscriber );
+		const controller = this.createController();
+		this._activations.push( [ subscriber, controller ] );
+		return controller;
+	}
+
+}
+
+export class EndPoint extends Stream2 {
+
+	createEmitter( subscriber ) {
+		if(!this.emitter) {
+			this.emitter = (data, record = { ttmp: getTTMP() }) => {
+				this.subscribers.map( subscriber => subscriber(data, record) );
+			};
+		}
+		return this.emitter;
+	}
+
+	_activate() {
+		if(!this._activated) {
+			super._activate();
+			this._activated = true;
+		}
 	}
 
 }
@@ -379,10 +471,14 @@ export class Reducer extends Stream2 {
 	 * @param state {Object|Stream2} Initial state (from static or stream)
 	 */
 	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT) {
+		const type = state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
 		super(sourcestreams, (e, controller) => {
+			let srvRequesterHook = null;
 			if(state !== EMPTY_OBJECT) {
-				if(state instanceof Stream2) {
-					controller.to(state.on( e ));
+				if(type === 1) {
+					controller.to(srvRequesterHook = state.on( (data) => {
+						e( state = data );
+					} ));
 				}
 				else {
 					e( state, { ttmp: getTTMP() } );
@@ -391,7 +487,18 @@ export class Reducer extends Stream2 {
 			if(sourcestreams) {
 				controller.todisconnect(sourcestreams.on( (data, record ) => {
 					state = project(state, data);
+					const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+					const needConfirmation = type === 1 && record.slave;
+					if(needConfirmation) {
+						record = { ...record, slave: false, grid, confirmed: !type };
+					}
+					else {
+						record = { ...record, grid, confirmed: !type };
+					}
 					e( state, record );
+					if(needConfirmation) {
+						srvRequesterHook({ grid, data, record });
+					}
 				} ));
 			}
 			if(!sourcestreams && !state) {
@@ -400,52 +507,68 @@ export class Reducer extends Stream2 {
 				/*</@debug>*/
 			}
 		});
-		this._activated = false;
-		this._quene = [];
+		this._activated = null;
+		this._queue = [];
+		this.emitter = null;
+		this.controller = null;
 	}
 	
-	get quene() {
-		return this._quene;
+	get queue() {
+		return this._queue;
 	}
 	
 	createEmitter( subscriber ) {
 		if(!this.emitter) {
 			this.emitter = (data, record = { ttmp: getTTMP() }) => {
-				this.quene.push( [ data, record ] );
-				if(this.quene.length > 1) {
-					this._normilizeQuene();
+				this.queue.push( [ data, record ] );
+				if(this.queue.length > 1) {
+					this._normalizeQueue();
 				}
 				this.subscribers.map( subscriber => subscriber(data, record) );
 			};
 		}
 		return this.emitter;
 	}
+
+	createController( ) {
+		if(!this.controller) {
+			this.controller = super.createController();
+		}
+		return this.controller;
+	}
 	
 	_activate() {
 		if(!this._activated) {
-			super._activate();
-			this._activated = true;
+			this._activated = super._activate();
+		}
+		return this._activated;
+	}
+
+	_deactivate(subscriber, controller) {
+		if(this._activated && !this.subscribers.length) {
+			super._deactivate( subscriber, controller );
+			this._activated = null;
 		}
 	}
 	
-	_normilizeQuene() {
+	_normalizeQueue() {
 		const currentTTMP = getTTMP();
-		let firstUnobseloteMSGIndex = this.quene
+		let firstActualMsgIndex = this.queue
 			.findIndex( ( [, {ttmp}]) => ttmp > currentTTMP - MAX_MSG_LIVE_TIME_MS );
-		if(firstUnobseloteMSGIndex === this.quene.length - 1) {
-			firstUnobseloteMSGIndex -- ;
+		if(firstActualMsgIndex === this.queue.length - 1) {
+      firstActualMsgIndex -- ;
 		}
-		if(firstUnobseloteMSGIndex > 0) {
-			this.quene.splice( 0, firstUnobseloteMSGIndex + 1);
+		if(firstActualMsgIndex > 0) {
+			this.queue.splice( 0, firstActualMsgIndex + 1);
 		}
 		else {
-			this.quene.splice( 0, this.quene.length - 1);
+			this.queue.splice( 0, this.queue.length - 1);
 		}
 	}
 	
 	on( subscriber ) {
 		const hook = super.on( subscriber );
-		this.quene.map( ([data, record]) =>
+		this.queue.map( ([data, record]) =>
 			this.subscribers.map(subscriber => subscriber(data, record))
 		);
 		return hook;

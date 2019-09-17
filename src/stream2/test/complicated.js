@@ -1,7 +1,5 @@
-import {describe, it} from "mocha"
-import { merge, stream, keyF } from "../../index.mjs"
-import {expect} from "chai"
-import {series} from "../../utils.mjs"
+import { stream2 as stream } from '../index';
+import {series} from "../../utils.mjs";
 
 
 class Socket {
@@ -56,35 +54,27 @@ describe('1.', function () {
 });*/
 
 describe('complicated', function () {
-
-    it('stream reopening', (done) => {
-
+    test('stream reopening', (done) => {
         done = series(done, [
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
-            evt => expect(evt).to.deep.equal( keyF ),
-            evt => expect(evt).to.equal( "a1" ),
-            evt => expect(evt).to.equal( "b2" ),
-            evt => expect(evt).to.equal( "c3" ),
-            evt => expect(evt).to.equal( "d4" ),
+            evt => expect(evt).toEqual( "a1" ),
+            evt => expect(evt).toEqual( "b2" ),
+            evt => expect(evt).toEqual( "c3" ),
+            evt => expect(evt).toEqual( "d4" ),
+            evt => expect(evt).toEqual( "a1" ),
+            evt => expect(evt).toEqual( "b2" ),
+            evt => expect(evt).toEqual( "c3" ),
+            evt => expect(evt).toEqual( "d4" ),
         ]);
-
-        const source = stream( emt => {
+        const source = stream( null, emt => {
             emt("a1");
             emt("b2");
             emt("c3");
             emt("d4");
         } );
-
         const hook = source.on( done );
         setTimeout(() => {
             hook();
             source.on( done );
         }, 10);
-
     });
-
 });
