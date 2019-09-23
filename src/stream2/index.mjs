@@ -486,18 +486,21 @@ export class Reducer extends Stream2 {
 			}
 			if(sourcestreams) {
 				controller.todisconnect(sourcestreams.on( (data, record ) => {
-					state = project(state, data);
-					const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
-					const needConfirmation = type === 1 && record.slave;
-					if(needConfirmation) {
-						record = { ...record, slave: false, grid, confirmed: !type };
-					}
-					else {
-						record = { ...record, grid, confirmed: !type };
-					}
-					e( state, record );
-					if(needConfirmation) {
-						srvRequesterHook({ grid, data, record });
+					const newstate = project(state, data);
+					if(newstate !== undefined) {
+						state = newstate;
+						const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+						const needConfirmation = type === 1 && record.slave;
+						if(needConfirmation) {
+							record = { ...record, slave: false, grid, confirmed: !type };
+						}
+						else {
+							record = { ...record, grid, confirmed: !type };
+						}
+						e( state, record );
+						if(needConfirmation) {
+							srvRequesterHook({ grid, data, record });
+						}
 					}
 				} ));
 			}
