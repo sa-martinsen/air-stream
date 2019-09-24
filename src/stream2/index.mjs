@@ -582,3 +582,39 @@ export class Reducer extends Stream2 {
 Stream2.KEY_SIGNALS = KEY_SIGNALS;
 const isKeySignal = Stream2.isKeySignal;
 const MAX_MSG_LIVE_TIME_MS = 7000;
+
+const UPS = new class {
+
+	constructor() {
+		this.subscribers = [];
+		const UPS = 100;
+		const factor = UPS / 1000;
+		let globalCounter = 0;
+		const startttmp = getTTMP();
+		const sid = setInterval(() => {
+			const current = getTTMP();
+			const count = (current - startttmp) * factor - globalCounter|0;
+			for (let i = 0; i < count; i++) {
+				globalCounter++;
+				this.tick(globalCounter, startttmp + globalCounter * factor|0);
+			}
+		}, 500 / UPS);
+	}
+
+	tick(step, ttmp) {
+		this.subscribers.map( subscriber => subscriber(step, ttmp) );
+	}
+	
+	subscribe( subscriber ) {
+		this.subscribers.push( subscriber );
+	}
+
+	unsubscribe( subscriber ) {
+		const removed = this.subscribers.indexOf(subscriber);
+		/*<@debug>*/
+		if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+		/*</@debug>*/
+		this.subscribers.splice(removed, 1);
+	}
+
+}
