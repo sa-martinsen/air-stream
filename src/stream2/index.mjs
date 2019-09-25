@@ -348,9 +348,11 @@ export class RemouteService extends Stream2 {
 	static fromWebSocketConnection ({host, port}) {
 		let websocketconnection = null;
 		let remouteserviceconnectionstatus = null;
+		const STMPSuncData = { remoute: -1, connected: -1, current: -1 };
 		return new RemouteService(null, (e, controller) => {
 			if(!websocketconnection) {
 				websocketconnection = new WebSocket(`ws://${host}:${port}`);
+				UPS.subscribe( stmp => STMPSuncData.current = stmp );
 			}
 			if(remouteserviceconnectionstatus === "ready") {
 				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
@@ -358,6 +360,8 @@ export class RemouteService extends Stream2 {
 			function onsocketmessagehandler({ data: raw }) {
 				const msg = JSON.parse(raw);
 				if(msg.event === "remote-service-ready") {
+					STMPSuncData.remoute = msg.stmp;
+					STMPSuncData.connected = UPS.current;
 					remouteserviceconnectionstatus = "ready";
 					e( msg );
 				}
@@ -367,6 +371,7 @@ export class RemouteService extends Stream2 {
 			}
 			function onsocketopendhandler() {
 				controller.tocommand( ({ disconnect, dissolve, ...data }) => {
+					data.stmp = STMPSuncData.remoute - STMPSuncData.connected - data.stmp;
 					websocketconnection.send( JSON.stringify(data) );
 				} );
 			}
@@ -601,8 +606,8 @@ const UPS = new class {
 		}, 500 / UPS);
 	}
 
-	tick(step, ttmp) {
-		this.subscribers.map( subscriber => subscriber(step, ttmp) );
+	tick(stmp, ttmp) {
+		this.subscribers.map( subscriber => subscriber(stmp, ttmp) );
 	}
 	
 	subscribe( subscriber ) {
