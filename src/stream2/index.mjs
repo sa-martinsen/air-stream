@@ -1,6 +1,8 @@
 import Observable, {keyA} from '../observable/index.mjs'
 import getTTMP from "./get-ttmp.mjs"
 
+
+
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
 let GLOBAL_CONNECTIONS_ID_COUNTER = 1;
 let GLOBAL_REQUEST_ID_COUNTER = 1;
@@ -42,14 +44,16 @@ export class Stream2 {
 			controller.to( this.on(e), connection.on( () => {} ) );
 		} );
 	}
-	
+
 	reduceF(state, project) {
 		return new Reducer( this, project, state);
 	}
 
-	slave() {
+	configure({ slave = false, stmp = false } = {}) {
 		return new Stream2(null, (e, controller) => {
-			controller.to( this.on( ( data, record ) => e(data, { ...record, slave: true }) ) );
+			controller.to( this.on( ( data, record ) =>
+				e(data, { ...record, slave, stmp: -stmp }) )
+			);
 		})
 	}
 
@@ -484,6 +488,18 @@ export class Reducer extends Stream2 {
 	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT) {
 		const type = state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
 		super(sourcestreams, (e, controller) => {
+			const sked = [];
+			const STMPSuncData = { current: -1 };
+			UPS.subscribe( stmp => {
+				STMPSuncData.current = stmp;
+				const events = sked.filter( ([_, record]) => record.stmp === stmp );
+				if(events.length) {
+					events.map( evt => {
+						sked.splice(sked.indexOf(evt), 1);
+						e( ...evt );
+					} );
+				}
+			} );
 			let srvRequesterHook = null;
 			if(state !== EMPTY_OBJECT) {
 				if(type === 1) {
@@ -496,21 +512,36 @@ export class Reducer extends Stream2 {
 				}
 			}
 			if(sourcestreams) {
-				controller.todisconnect(sourcestreams.on( (data, record ) => {
-					const newstate = project(state, data);
-					if(newstate !== undefined) {
-						state = newstate;
-					const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
-						const needConfirmation = type === 1 && record.slave;
+				controller.todisconnect(sourcestreams.on( (data, { stmp, ...record } ) => {
+					const needConfirmation = type === 1 && record.slave;
+					if(stmp) {
+						record = { stmp: STMPSuncData.current + 4, ...record };
 						if(needConfirmation) {
 							record = { ...record, slave: false, grid, confirmed: !type };
 						}
 						else {
-					record = { ...record, grid, confirmed: !type };
+							record = { ...record, grid, confirmed: !type };
 						}
-					e( state, record );
+						sked.push([data, record]);
 						if(needConfirmation) {
-						srvRequesterHook({ grid, data, record });
+							srvRequesterHook({ grid, data, record });
+						}
+					}
+					else {
+						const newstate = project(state, data);
+						if(newstate !== undefined) {
+							state = newstate;
+							const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+							if(needConfirmation) {
+								record = { ...record, slave: false, grid, confirmed: !type };
+							}
+							else {
+								record = { ...record, grid, confirmed: !type };
+							}
+							e( state, record );
+							if(needConfirmation) {
+								srvRequesterHook({ grid, data, record });
+							}
 						}
 					}
 				} ));
