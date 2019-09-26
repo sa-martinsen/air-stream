@@ -36,6 +36,12 @@ export class Stream2 {
 			controller.todisconnect(...sourcestreams.map( stream => stream.on( e ) ));
 		});
 	}
+
+	controller( connection ) {
+		return new Stream2( null,( e, controller ) => {
+			controller.to( this.on(e), connection.on( () => {} ) );
+		} );
+	}
 	
 	reduceF(state, project) {
 		return new Reducer( this, project, state);
@@ -494,17 +500,17 @@ export class Reducer extends Stream2 {
 					const newstate = project(state, data);
 					if(newstate !== undefined) {
 						state = newstate;
-						const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+					const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
 						const needConfirmation = type === 1 && record.slave;
 						if(needConfirmation) {
 							record = { ...record, slave: false, grid, confirmed: !type };
 						}
 						else {
-							record = { ...record, grid, confirmed: !type };
+					record = { ...record, grid, confirmed: !type };
 						}
-						e( state, record );
+					e( state, record );
 						if(needConfirmation) {
-							srvRequesterHook({ grid, data, record });
+						srvRequesterHook({ grid, data, record });
 						}
 					}
 				} ));
@@ -518,7 +524,7 @@ export class Reducer extends Stream2 {
 		this._activated = null;
 		this._queue = [];
 		this.emitter = null;
-		this.controller = null;
+		this.__controller = null;
 	}
 	
 	get queue() {
@@ -539,10 +545,10 @@ export class Reducer extends Stream2 {
 	}
 
 	createController( ) {
-		if(!this.controller) {
-			this.controller = super.createController();
+		if(!this.__controller) {
+			this.__controller = super.createController();
 		}
-		return this.controller;
+		return this.__controller;
 	}
 	
 	_activate() {
@@ -622,4 +628,4 @@ const UPS = new class {
 		this.subscribers.splice(removed, 1);
 	}
 
-}
+};
