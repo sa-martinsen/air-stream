@@ -284,7 +284,7 @@ export class Stream2 {
 	}
 
 	/**
-	 * Кеширует линию потока, чтобы новые стримы не создавались
+	 * Кеширует соединение линии потока, чтобы новые стримы не создавались
 	 */
 	endpoint() {
 		return new EndPoint( null, (e, controller) => {
@@ -324,8 +324,8 @@ export class Stream2 {
 		} );
 	}
 	
-	static ups(UPS = 100) {
-		const factor = UPS / 1000;
+	static ups() {
+		const factor = UPS.ups / 1000;
 		return new Stream2( [], (e, controller) => {
 			let globalCounter = 0;
 			const startttmp = getTTMP();
@@ -337,7 +337,7 @@ export class Stream2 {
 					globalCounter++;
 					e(globalCounter, { ttmp: startttmp + globalCounter * factor|0 });
 				}
-			}, 500 / UPS);
+			}, 500 / UPS.ups);
 			controller.todisconnect( () => clearInterval(sid) );
 		} );
 	}
@@ -471,8 +471,15 @@ export class EndPoint extends Stream2 {
 
 	_activate() {
 		if(!this._activated) {
-			super._activate();
-			this._activated = true;
+			this._activated = super._activate();
+		}
+		return this._activated;
+	}
+
+	_deactivate(subscriber, controller) {
+		if(this._activated && !this.subscribers.length) {
+			super._deactivate( subscriber, controller );
+			this._activated = null;
 		}
 	}
 
@@ -629,18 +636,23 @@ const UPS = new class {
 
 	constructor() {
 		this.subscribers = [];
-		const UPS = 100;
-		const factor = UPS / 1000;
+		//todo async set at UPS state value
+		//const factor = this.ups / 1000;
 		let globalCounter = 0;
 		const startttmp = getTTMP();
 		const sid = setInterval(() => {
+			const factor = this.ups / 1000;
 			const current = getTTMP();
 			const count = (current - startttmp) * factor - globalCounter|0;
 			for (let i = 0; i < count; i++) {
 				globalCounter++;
 				this.tick(globalCounter, startttmp + globalCounter * factor|0);
 			}
-		}, 500 / UPS);
+		}, 500 / this.ups);
+	}
+
+	set(ups) {
+		this.ups = ups;
 	}
 
 	tick(stmp, ttmp) {
@@ -660,3 +672,5 @@ const UPS = new class {
 	}
 
 };
+
+stream2.UPS = UPS;
