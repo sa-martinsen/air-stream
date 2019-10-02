@@ -4,6 +4,7 @@ import getTTMP from "./get-ttmp.mjs"
 
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
+const FROM_OWNER_STREAM = Object.freeze({ fromOwnerStream: 'fromOwnerStream' });
 let GLOBAL_CONNECTIONS_ID_COUNTER = 1;
 let GLOBAL_REQUEST_ID_COUNTER = 1;
 const STATIC_PROJECTS = {
@@ -45,8 +46,8 @@ export class Stream2 {
 		} );
 	}
 
-	reduceF(state, project) {
-		return new Reducer( this, project, state);
+	reduceF(state, project, init) {
+		return new Reducer( this, project, state, init);
 	}
 
 	configure({ slave = false, stmp = false } = {}) {
@@ -491,8 +492,9 @@ export class Reducer extends Stream2 {
 	 * @param sourcestreams {Stream2|null} Operational stream
 	 * @param project {Function}
 	 * @param state {Object|Stream2} Initial state (from static or stream)
+	 * @param init {Function} Initial state mapper
 	 */
-	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT) {
+	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT, init = null) {
 		const type = state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
 		super(sourcestreams, (e, controller) => {
 			const sked = [];
@@ -508,18 +510,23 @@ export class Reducer extends Stream2 {
 				}
 			} );
 			let srvRequesterHook = null;
-			if(state !== EMPTY_OBJECT) {
+			if(state !== EMPTY_OBJECT && state !== FROM_OWNER_STREAM) {
 				if(type === 1) {
 					controller.to(srvRequesterHook = state.on( (data) => {
-						e( state = data );
+						e( state = init ? init(data) : data );
 					} ));
 				}
 				else {
+					state = init ? init(state) : state;
 					e( state, { ttmp: getTTMP() } );
 				}
 			}
 			if(sourcestreams) {
 				controller.todisconnect(sourcestreams.on( (data, { stmp, ...record } ) => {
+					if(state === FROM_OWNER_STREAM) {
+						state = init ? init(data[0]) : data[0];
+						return e( [ state, {} ], { ttmp: getTTMP() } );
+					}
 					const needConfirmation = type === 1 && record.slave;
 					if(stmp) {
 						record = { stmp: STMPSuncData.current + 4, ...record };
@@ -567,6 +574,10 @@ export class Reducer extends Stream2 {
 	
 	get queue() {
 		return this._queue;
+	}
+
+	reduceF(project, init) {
+		return new Reducer( this, project, FROM_OWNER_STREAM, init);
 	}
 	
 	createEmitter( subscriber ) {
