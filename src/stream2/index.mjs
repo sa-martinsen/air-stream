@@ -1,7 +1,10 @@
 import Observable, {keyA} from '../observable/index.mjs'
 import getTTMP from "./get-ttmp.mjs"
 
+
+
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
+const FROM_OWNER_STREAM = Object.freeze({ fromOwnerStream: 'fromOwnerStream' });
 let GLOBAL_CONNECTIONS_ID_COUNTER = 1;
 let GLOBAL_REQUEST_ID_COUNTER = 1;
 const STATIC_PROJECTS = {
@@ -36,14 +39,22 @@ export class Stream2 {
 			controller.todisconnect(...sourcestreams.map( stream => stream.on( e ) ));
 		});
 	}
-	
-	reduceF(state, project) {
-		return new Reducer( this, project, state);
+
+	controller( connection ) {
+		return new Stream2( null,( e, controller ) => {
+			controller.to( this.on(e), connection.on( () => {} ) );
+		} );
 	}
 
-	slave() {
+	reduceF(state, project, init) {
+		return new Reducer( this, project, state, init);
+	}
+
+	configure({ slave = false, stmp = false } = {}) {
 		return new Stream2(null, (e, controller) => {
-			controller.to( this.on( ( data, record ) => e(data, { ...record, slave: true }) ) );
+			controller.to( this.on( ( data, record ) =>
+				e(data, { ...record, slave, stmp: -stmp }) )
+			);
 		})
 	}
 
@@ -274,7 +285,7 @@ export class Stream2 {
 	}
 
 	/**
-	 * Кеширует линию потока, чтобы новые стримы не создавались
+	 * Кеширует соединение линии потока, чтобы новые стримы не создавались
 	 */
 	endpoint() {
 		return new EndPoint( null, (e, controller) => {
@@ -314,8 +325,8 @@ export class Stream2 {
 		} );
 	}
 	
-	static ups(UPS = 100) {
-		const factor = UPS / 1000;
+	static ups() {
+		const factor = UPS.ups / 1000;
 		return new Stream2( [], (e, controller) => {
 			let globalCounter = 0;
 			const startttmp = getTTMP();
@@ -327,7 +338,7 @@ export class Stream2 {
 					globalCounter++;
 					e(globalCounter, { ttmp: startttmp + globalCounter * factor|0 });
 				}
-			}, 500 / UPS);
+			}, 500 / UPS.ups);
 			controller.todisconnect( () => clearInterval(sid) );
 		} );
 	}
@@ -348,9 +359,11 @@ export class RemouteService extends Stream2 {
 	static fromWebSocketConnection ({host, port}) {
 		let websocketconnection = null;
 		let remouteserviceconnectionstatus = null;
+		const STMPSuncData = { remoute: -1, connected: -1, current: -1 };
 		return new RemouteService(null, (e, controller) => {
 			if(!websocketconnection) {
 				websocketconnection = new WebSocket(`ws://${host}:${port}`);
+				UPS.subscribe( stmp => STMPSuncData.current = stmp );
 			}
 			if(remouteserviceconnectionstatus === "ready") {
 				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
@@ -358,6 +371,8 @@ export class RemouteService extends Stream2 {
 			function onsocketmessagehandler({ data: raw }) {
 				const msg = JSON.parse(raw);
 				if(msg.event === "remote-service-ready") {
+					STMPSuncData.remoute = msg.stmp;
+					STMPSuncData.connected = UPS.current;
 					remouteserviceconnectionstatus = "ready";
 					e( msg );
 				}
@@ -367,6 +382,7 @@ export class RemouteService extends Stream2 {
 			}
 			function onsocketopendhandler() {
 				controller.tocommand( ({ disconnect, dissolve, ...data }) => {
+					data.stmp = STMPSuncData.remoute - STMPSuncData.connected - data.stmp;
 					websocketconnection.send( JSON.stringify(data) );
 				} );
 			}
@@ -456,8 +472,15 @@ export class EndPoint extends Stream2 {
 
 	_activate() {
 		if(!this._activated) {
-			super._activate();
-			this._activated = true;
+			this._activated = super._activate();
+		}
+		return this._activated;
+	}
+
+	_deactivate(subscriber, controller) {
+		if(this._activated && !this.subscribers.length) {
+			super._deactivate( subscriber, controller );
+			this._activated = null;
 		}
 	}
 
@@ -469,35 +492,71 @@ export class Reducer extends Stream2 {
 	 * @param sourcestreams {Stream2|null} Operational stream
 	 * @param project {Function}
 	 * @param state {Object|Stream2} Initial state (from static or stream)
+	 * @param init {Function} Initial state mapper
 	 */
-	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT) {
+	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT, init = null) {
 		const type = state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
 		super(sourcestreams, (e, controller) => {
+			const sked = [];
+			const STMPSuncData = { current: -1 };
+			UPS.subscribe( stmp => {
+				STMPSuncData.current = stmp;
+				const events = sked.filter( ([_, record]) => record.stmp === stmp );
+				if(events.length) {
+					events.map( evt => {
+						sked.splice(sked.indexOf(evt), 1);
+						e( ...evt );
+					} );
+				}
+			} );
 			let srvRequesterHook = null;
-			if(state !== EMPTY_OBJECT) {
+			if(state !== EMPTY_OBJECT && state !== FROM_OWNER_STREAM) {
 				if(type === 1) {
 					controller.to(srvRequesterHook = state.on( (data) => {
-						e( state = data );
+						e( state = init ? init(data) : data );
 					} ));
 				}
 				else {
+					state = init ? init(state) : state;
 					e( state, { ttmp: getTTMP() } );
 				}
 			}
 			if(sourcestreams) {
-				controller.todisconnect(sourcestreams.on( (data, record ) => {
-					state = project(state, data);
-					const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+				controller.todisconnect(sourcestreams.on( (data, { stmp, ...record } ) => {
+					if(state === FROM_OWNER_STREAM) {
+						state = init ? init(data[0]) : data[0];
+						return e( [ state, {} ], { ttmp: getTTMP() } );
+					}
 					const needConfirmation = type === 1 && record.slave;
-					if(needConfirmation) {
-						record = { ...record, slave: false, grid, confirmed: !type };
+					if(stmp) {
+						record = { stmp: STMPSuncData.current + 4, ...record };
+						if(needConfirmation) {
+							record = { ...record, slave: false, grid, confirmed: !type };
+						}
+						else {
+							record = { ...record, grid, confirmed: !type };
+						}
+						sked.push([data, record]);
+						if(needConfirmation) {
+							srvRequesterHook({ grid, data, record });
+						}
 					}
 					else {
-						record = { ...record, grid, confirmed: !type };
-					}
-					e( state, record );
-					if(needConfirmation) {
-						srvRequesterHook({ grid, data, record });
+						const newstate = project(state, data);
+						if(newstate !== undefined) {
+							state = newstate;
+							const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+							if(needConfirmation) {
+								record = { ...record, slave: false, grid, confirmed: !type };
+							}
+							else {
+								record = { ...record, grid, confirmed: !type };
+							}
+							e( state, record );
+							if(needConfirmation) {
+								srvRequesterHook({ grid, data, record });
+							}
+						}
 					}
 				} ));
 			}
@@ -510,11 +569,15 @@ export class Reducer extends Stream2 {
 		this._activated = null;
 		this._queue = [];
 		this.emitter = null;
-		this.controller = null;
+		this.__controller = null;
 	}
 	
 	get queue() {
 		return this._queue;
+	}
+
+	reduceF(project, init) {
+		return new Reducer( this, project, FROM_OWNER_STREAM, init);
 	}
 	
 	createEmitter( subscriber ) {
@@ -531,10 +594,10 @@ export class Reducer extends Stream2 {
 	}
 
 	createController( ) {
-		if(!this.controller) {
-			this.controller = super.createController();
+		if(!this.__controller) {
+			this.__controller = super.createController();
 		}
-		return this.controller;
+		return this.__controller;
 	}
 	
 	_activate() {
@@ -579,3 +642,46 @@ export class Reducer extends Stream2 {
 Stream2.KEY_SIGNALS = KEY_SIGNALS;
 const isKeySignal = Stream2.isKeySignal;
 const MAX_MSG_LIVE_TIME_MS = 7000;
+
+const UPS = new class {
+
+	constructor() {
+		this.subscribers = [];
+		//todo async set at UPS state value
+		//const factor = this.ups / 1000;
+		let globalCounter = 0;
+		const startttmp = getTTMP();
+		const sid = setInterval(() => {
+			const factor = this.ups / 1000;
+			const current = getTTMP();
+			const count = (current - startttmp) * factor - globalCounter|0;
+			for (let i = 0; i < count; i++) {
+				globalCounter++;
+				this.tick(globalCounter, startttmp + globalCounter * factor|0);
+			}
+		}, 500 / this.ups);
+	}
+
+	set(ups) {
+		this.ups = ups;
+	}
+
+	tick(stmp, ttmp) {
+		this.subscribers.map( subscriber => subscriber(stmp, ttmp) );
+	}
+	
+	subscribe( subscriber ) {
+		this.subscribers.push( subscriber );
+	}
+
+	unsubscribe( subscriber ) {
+		const removed = this.subscribers.indexOf(subscriber);
+		/*<@debug>*/
+		if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+		/*</@debug>*/
+		this.subscribers.splice(removed, 1);
+	}
+
+};
+
+stream2.UPS = UPS;
