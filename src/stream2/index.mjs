@@ -522,6 +522,7 @@ export class Reducer extends Stream2 {
 				}
 			}
 			if(sourcestreams) {
+
 				controller.todisconnect(sourcestreams.on( (data, { stmp, ...record } ) => {
 					if(state === FROM_OWNER_STREAM) {
 						state = init ? init(data[0]) : data[0];
@@ -630,10 +631,10 @@ export class Reducer extends Stream2 {
 	}
 	
 	on( subscriber ) {
-		const hook = super.on( subscriber );
 		this.queue.map( ([data, record]) =>
-			this.subscribers.map(subscriber => subscriber(data, record))
+			subscriber => subscriber(data, record)
 		);
+		const hook = super.on( subscriber );
 		return hook;
 	}
 
