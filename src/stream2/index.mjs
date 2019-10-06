@@ -294,34 +294,37 @@ export class Stream2 {
 	}
 	
 	/**
-	 * @param {RemouteService} remoteservicecontroller - Remoute service controller connection
+	 * @param {fromRemoteService} remote-service-controller - Remoute service controller connection
 	 * @param {Object} stream - Stream name from server
 	 */
-	static fromRemouteService( remoteservicecontroller, stream ) {
+	static fromRemoteService( remoteservicecontroller, stream ) {
 		return new Stream2(null, (e, controller) => {
 			const connection = { id: GLOBAL_CONNECTIONS_ID_COUNTER ++ };
-			let hook = remoteservicecontroller.on( ({ event, data, connection: { id } }, record) => {
-				if(event === "remote-service-ready") {
-					hook({
-						request: "subscribe",
-						stream,
-						connection,
-					});
-				}
-				else if(event === "reinitial-state" && connection.id === id ) {
-					e(data, { ...record, grid: 0 });
-				}
-				else if(event === "data" && connection.id === id ) {
-					e(data, { ...record, grid: -1 });
-				}
-				else if(event === "result" && connection.id === id ) {
-					e(data, { ...record, grid: -1 });
-				}
-			} );
+			const connector = remoteservicecontroller.connectable();
+			let hook = connector.on(
+				({ event, data, connection: { id } }, record) => {
+					if(event === "remote-service-ready") {
+						hook({
+							request: "subscribe",
+							stream,
+							connection,
+						});
+					}
+					else if(event === "reinitial-state" && connection.id === id ) {
+						e(data, { ...record, grid: 0 });
+					}
+					else if(event === "data" && connection.id === id ) {
+						e(data, { ...record, grid: -1 });
+					}
+					else if(event === "result" && connection.id === id ) {
+						e(data, { ...record, grid: -1 });
+					}
+			});
 			controller.tocommand(({ dissolve, disconnect, ...data }) => {
 				hook({ request: "command", data, connection });
 			});
 			controller.todisconnect(hook);
+			connector.connect();
 		} );
 	}
 	
@@ -543,6 +546,12 @@ export class Reducer extends Stream2 {
 						}
 					}
 					else {
+						
+						//todo temporary solution
+						if(state instanceof Stream2) {
+							return;
+						}
+						
 						const newstate = project(state, data);
 						if(newstate !== undefined) {
 							state = newstate;
