@@ -660,17 +660,12 @@ export class Reducer extends Stream2 {
 	}
 	
 	connect( subscriber ) {
-		
-		if(this.__$) {
-			debugger;
-		}
-		
-		
 		super.connect( (hook) => {
+			const res = subscriber(hook);
 			this.queue.map( ([data, record]) =>
 				subscriber => subscriber(data, record)
 			);
-			return subscriber(hook);
+			return res;
 		} );
 	}
 	
@@ -678,8 +673,7 @@ export class Reducer extends Stream2 {
 		this.queue.map( ([data, record]) =>
 			subscriber => subscriber(data, record)
 		);
-		const hook = super.on( subscriber );
-		return hook;
+		return super.on( subscriber );
 	}
 
 }
