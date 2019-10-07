@@ -84,7 +84,46 @@ export class Stream2 {
 		return new Reducer( null, null, this );
 	}
 	
+	map(project) {
+		return new Stream2(null, (e, controller) => {
+			this.connect( (hook) => {
+				controller.to(hook);
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						return e(data, record);
+					}
+					e(project(data), record);
+				}
+			});
+		});
+	}
+	
+	connect( connector ) {
+		const controller = this.createController();
+		const hook = ({ disconnect = false, ...args } = { disconnect: true }) => {
+			if(disconnect) {
+				const removed = this.subscribers.indexOf(subscriber);
+				/*<@debug>*/
+				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+				/*</@debug>*/
+				this.subscribers.splice(removed, 1);
+				this._deactivate( subscriber, controller );
+			}
+			else {
+				controller.send({
+					...args,
+					dissolve: false,
+					disconnect: false,
+				});
+			}
+		};
+		const subscriber = connector(hook);
+		this.subscribers.push(subscriber);
+		this._activate( subscriber, controller );
+	}
+	
 	on( subscriber ) {
+		console.warn("This method deprecated now, pls use .connect() instead");
 		this.subscribers.push(subscriber);
 		const controller = this._activate( subscriber );
 		return ({ disconnect = false, ...args } = { disconnect: true }) => {
@@ -113,21 +152,6 @@ export class Stream2 {
 			}
 			subscriber( data, record );
 		} );
-	}
-	
-	connectable() {
-		return new Connectable( this );
-	}
-	
-	map(project) {
-		return new Stream2(null, (e, controller) => {
-			controller.to(this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					return e(data, record);
-				}
-				e(project(data), record);
-			} ));
-		});
 	}
 	
 	filter(project) {
@@ -219,13 +243,16 @@ export class Stream2 {
 	
 	withHandler (handler) {
 		return new Stream2(null, (e, controller) =>
-			controller.to(this.on((evt, record) => {
-				if (Observable.keys.includes(evt)) {
-					return e(evt, record);
+			this.connect(hook => {
+				controller.to(hook);
+				return (evt, record) => {
+					if (Observable.keys.includes(evt)) {
+						return e(evt, record);
+					}
+					const _e = (evt, _record) => e(evt, _record || record);
+					return handler(_e, evt);
 				}
-				const _e = (evt, _record) => e(evt, _record || record);
-				return handler(_e, evt);
-			}))
+			})
 		);
 	}
 	
@@ -255,32 +282,41 @@ export class Stream2 {
 		return new Stream2( null, (e, controller) => {
 			let slave = false;
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
-			controller.todisconnect( ...sourcestreams.map( (stream, i) => {
-				return stream.on( (data, record) => {
-					if(record.slave) slave = true;
-					if(isKeySignal(data)) {
-						return e( data, { ...record, slave } );
+			sourcestreams.map( (stream, i) => {
+				stream.connect((hook) => {
+					controller.todisconnect(hook);
+					return (data, record) => {
+						if (record.slave) slave = true;
+						if (isKeySignal(data)) {
+							return e(data, {...record, slave});
+						}
+						sourcestreamsstate[i] = data;
 					}
-					sourcestreamsstate[i] = data;
-				} );
-			} ) );
-			controller.to( this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					return e( data, record );
+				});
+			});
+			this.connect( hook => {
+				controller.to(hook);
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						return e( data, record );
+					}
+					if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
+						e(project(data, ...sourcestreamsstate), { ...record, slave });
+					}
 				}
-				if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
-					e(project(data, ...sourcestreamsstate), { ...record, slave });
-				}
-			} ) );
+			} );
 		} );
 	}
 	
 	log() {
 		return new Stream2( this, (e, controller) => {
-			controller.to(this.on((data, record) => {
-				console.log(data);
-				e(data, record);
-			}));
+			this.connect(hook => {
+				controller.to( hook );
+				return (data, record) => {
+					console.log(data);
+					e(data, record);
+				}
+			});
 		});
 	}
 
@@ -289,20 +325,27 @@ export class Stream2 {
 	 */
 	endpoint() {
 		return new EndPoint( null, (e, controller) => {
-			controller.to(this.on(e));
+			this.connect(hook => {
+				controller.to(hook);
+				return e;
+			});
 		} );
 	}
 	
 	/**
-	 * @param {fromRemoteService} remote-service-controller - Remoute service controller connection
+	 * @param {fromRemoteService} remoteservicecontroller - Remoute service controller connection
 	 * @param {Object} stream - Stream name from server
 	 */
 	static fromRemoteService( remoteservicecontroller, stream ) {
 		return new Stream2(null, (e, controller) => {
 			const connection = { id: GLOBAL_CONNECTIONS_ID_COUNTER ++ };
-			const connector = remoteservicecontroller.connectable();
-			let hook = connector.on(
-				({ event, data, connection: { id } }, record) => {
+			//const connector = remoteservicecontroller.connectable();
+			remoteservicecontroller.connect( (hook) => {
+				controller.tocommand(({ dissolve, disconnect, ...data }) => {
+					hook({ request: "command", data, connection });
+				});
+				controller.todisconnect(hook);
+				return ({ event, data, connection: { id } }, record) => {
 					if(event === "remote-service-ready") {
 						hook({
 							request: "subscribe",
@@ -319,12 +362,8 @@ export class Stream2 {
 					else if(event === "result" && connection.id === id ) {
 						e(data, { ...record, grid: -1 });
 					}
+				}
 			});
-			controller.tocommand(({ dissolve, disconnect, ...data }) => {
-				hook({ request: "command", data, connection });
-			});
-			controller.todisconnect(hook);
-			connector.connect();
 		} );
 	}
 	
@@ -413,7 +452,6 @@ export class Controller {
 		this.disconnected = false;
 		this._todisconnect = [];
 		this._tocommand = [];
-		this._to = [];
 	}
 	
 	todisconnect(...connectors) {
@@ -421,7 +459,8 @@ export class Controller {
 	}
 	
 	to(...connectors) {
-		this._to.push(...connectors);
+		this._todisconnect.push(...connectors);
+		this._tocommand.push(...connectors);
 	}
 	
 	tocommand( ...connectors ) {
@@ -429,35 +468,13 @@ export class Controller {
 	}
 
 	send( data ) {
-		if(data.disconnect) {
+		if(!data.disconnect) {
+			this._tocommand.map( connector => connector(data) );
+		}
+		else {
 			this.disconnected = true;
 			this._todisconnect.map( connector => connector(data) );
 		}
-		else {
-			this._tocommand.map( connector => connector(data) );
-		}
-		this._to.map( connector => connector(data) );
-	}
-
-}
-
-export class Connectable extends Stream2 {
-	
-	constructor( sourcestreams ) {
-		super(sourcestreams, (e, controller) => {
-			controller.to( sourcestreams.on(e) );
-		});
-		this._activations = [];
-	}
-	
-	connect() {
-		this._activations.map( ([ subscriber, controller ]) => super._activate(subscriber, controller) );
-	}
-	
-	_activate( subscriber ) {
-		const controller = this.createController();
-		this._activations.push( [ subscriber, controller ] );
-		return controller;
 	}
 
 }
@@ -515,9 +532,12 @@ export class Reducer extends Stream2 {
 			let srvRequesterHook = null;
 			if(state !== EMPTY_OBJECT && state !== FROM_OWNER_STREAM) {
 				if(type === 1) {
-					controller.to(srvRequesterHook = state.on( (data) => {
-						e( state = init ? init(data) : data );
-					} ));
+					state.connect( hook => {
+						controller.to( srvRequesterHook = hook );
+						return (data) => {
+							e( state = init ? init(data) : data );
+						}
+					} );
 				}
 				else {
 					state = init ? init(state) : state;
@@ -637,6 +657,21 @@ export class Reducer extends Stream2 {
 		else {
 			this.queue.splice( 0, this.queue.length - 1);
 		}
+	}
+	
+	connect( subscriber ) {
+		
+		if(this.__$) {
+			debugger;
+		}
+		
+		
+		super.connect( (hook) => {
+			this.queue.map( ([data, record]) =>
+				subscriber => subscriber(data, record)
+			);
+			return subscriber(hook);
+		} );
 	}
 	
 	on( subscriber ) {
