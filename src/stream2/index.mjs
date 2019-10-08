@@ -47,7 +47,17 @@ export class Stream2 {
 	}
 
 	reduceF(state, project, init) {
+		if(state instanceof Function) {
+			init = project;
+			project = state;
+			state = FROM_OWNER_STREAM;
+		}
 		return new Reducer( this, project, state, init);
+	}
+
+	label(label) {
+		this._label = label;
+		return this;
 	}
 
 	configure({ slave = false, stmp = false } = {}) {
@@ -339,7 +349,6 @@ export class Stream2 {
 	static fromRemoteService( remoteservicecontroller, stream ) {
 		return new Stream2(null, (e, controller) => {
 			const connection = { id: GLOBAL_CONNECTIONS_ID_COUNTER ++ };
-			//const connector = remoteservicecontroller.connectable();
 			remoteservicecontroller.connect( (hook) => {
 				controller.tocommand(({ dissolve, disconnect, ...data }) => {
 					hook({ request: "command", data, connection });
@@ -407,9 +416,6 @@ export class RemouteService extends Stream2 {
 				websocketconnection = new WebSocket(`ws://${host}:${port}`);
 				UPS.subscribe( stmp => STMPSuncData.current = stmp );
 			}
-			if(remouteserviceconnectionstatus === "ready") {
-				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
-			}
 			function onsocketmessagehandler({ data: raw }) {
 				const msg = JSON.parse(raw);
 				if(msg.event === "remote-service-ready") {
@@ -437,6 +443,9 @@ export class RemouteService extends Stream2 {
 					socket.removeEventListener("open", onsocketopendhandler);
 				} );
 			}
+			if(remouteserviceconnectionstatus === "ready") {
+				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
+			}
 			websocketconnection.addEventListener("message", onsocketmessagehandler);
 			controller.todisconnect( () => {
 				websocketconnection.removeEventListener("message", onsocketmessagehandler);
@@ -445,6 +454,8 @@ export class RemouteService extends Stream2 {
 	}
 
 }
+
+Stream2.FROM_OWNER_STREAM = FROM_OWNER_STREAM;
 
 export class Controller {
 	
@@ -515,6 +526,9 @@ export class Reducer extends Stream2 {
 	 * @param init {Function} Initial state mapper
 	 */
 	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT, init = null) {
+
+		const cst = state;
+
 		const type = state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
 		super(sourcestreams, (e, controller) => {
 			const sked = [];
@@ -530,6 +544,7 @@ export class Reducer extends Stream2 {
 				}
 			} );
 			let srvRequesterHook = null;
+
 			if(state !== EMPTY_OBJECT && state !== FROM_OWNER_STREAM) {
 				if(type === 1) {
 					state.connect( hook => {
@@ -604,10 +619,6 @@ export class Reducer extends Stream2 {
 	
 	get queue() {
 		return this._queue;
-	}
-
-	reduceF(project, init) {
-		return new Reducer( this, project, FROM_OWNER_STREAM, init);
 	}
 	
 	createEmitter( subscriber ) {
