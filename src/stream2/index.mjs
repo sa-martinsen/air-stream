@@ -274,17 +274,20 @@ export class Stream2 {
 		}
 		return new Stream2( sourcestreams, (e, controller) => {
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
-			controller.to( ...sourcestreams.map( (stream, i) => {
-				return stream.on( (data, record) => {
-					if(Observable.keys.includes(data)) {
-						return e( data, record );
-					}
-					sourcestreamsstate[i] = data;
-					if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
-						e(project(...sourcestreamsstate), record);
+			sourcestreams.map( (stream, i) => {
+				return stream.connect( hook => {
+					controller.to(hook);
+					return (data, record) => {
+						if(Observable.keys.includes(data)) {
+							return e( data, record );
+						}
+						sourcestreamsstate[i] = data;
+						if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
+							e(project(...sourcestreamsstate), record);
+						}
 					}
 				} );
-			} ) );
+			} );
 		} );
 	}
 	
@@ -670,13 +673,13 @@ export class Reducer extends Stream2 {
 		}
 	}
 	
-	connect( subscriber ) {
+	connect( connector ) {
 		super.connect( (hook) => {
-			const res = subscriber(hook);
-			this.queue.map( ([data, record]) =>
-				subscriber => subscriber(data, record)
-			);
-			return res;
+			const subscriber = connector(hook);
+			this.queue.map( ([data, record]) => {
+				subscriber(data, record);
+			});
+			return subscriber;
 		} );
 	}
 	
