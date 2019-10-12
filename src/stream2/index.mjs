@@ -23,6 +23,9 @@ export class Stream2 {
 	
 	constructor(sourcestreams, project, ctx = null) {
 		this.subscribers = [];
+		/*<@debug>*/
+		this._label = "";
+		/*</@debug>*/
 		this.project = project;
 		this.ctx = ctx;
 		this.sourcestreams = sourcestreams;
@@ -62,11 +65,13 @@ export class Stream2 {
 		}
 		return new Reducer( this, project, state, init);
 	}
-
+	
+	/*<@debug>*/
 	label(label) {
 		this._label = label;
 		return this;
 	}
+	/*</@debug>*/
 
 	configure({ slave = false, stmp = false } = {}) {
 		return new Stream2(null, (e, controller) => {
@@ -122,7 +127,9 @@ export class Stream2 {
 			if(disconnect) {
 				const removed = this.subscribers.indexOf(subscriber);
 				/*<@debug>*/
-				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+				if(removed < 0) throw `
+					${this._label}: Attempt to delete an subscriber out of the container
+				`;
 				/*</@debug>*/
 				this.subscribers.splice(removed, 1);
 				this._deactivate( subscriber, controller );
@@ -148,7 +155,9 @@ export class Stream2 {
 			if(disconnect) {
 				const removed = this.subscribers.indexOf(subscriber);
 				/*<@debug>*/
-				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+				if(removed < 0) throw `
+					${this._label}: Attempt to delete an subscriber out of the container
+				`;
 				/*</@debug>*/
 				this.subscribers.splice(removed, 1);
 				this._deactivate( subscriber, controller );
@@ -238,7 +247,7 @@ export class Stream2 {
 	}
 	
 	createController(  ) {
-		return new Controller(  );
+		return new Controller( this );
 	}
 	
 	static sync (sourcestreams, equal, poject = STATIC_PROJECTS.AIO) {
@@ -329,6 +338,7 @@ export class Stream2 {
 		} );
 	}
 	
+	/*<@debug>*/
 	log() {
 		return new Stream2( this, (e, controller) => {
 			this.connect(hook => {
@@ -340,6 +350,7 @@ export class Stream2 {
 			});
 		});
 	}
+	/*</@debug>*/
 
 	/**
 	 * Кеширует соединение линии потока, чтобы новые стримы не создавались
@@ -470,7 +481,8 @@ Stream2.FROM_OWNER_STREAM = FROM_OWNER_STREAM;
 
 export class Controller {
 	
-	constructor() {
+	constructor(src) {
+		this.src = src;
 		this.disconnected = false;
 		this._todisconnect = [];
 		this._tocommand = [];
@@ -536,12 +548,12 @@ export class Reducer extends Stream2 {
 	 * @param state {Object|Stream2} Initial state (from static or stream)
 	 * @param init {Function} Initial state mapper
 	 */
-	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT, init = null) {
-
-		const cst = state;
-
-		const type = state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
+	constructor(sourcestreams, project = (_, data) => data, _state = EMPTY_OBJECT, init = null) {
+		const cst = _state;
+		const type = _state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
 		super(sourcestreams, (e, controller) => {
+			//initial state reused
+			let state = _state;
 			const sked = [];
 			const STMPSuncData = { current: -1 };
 			UPS.subscribe( stmp => {
@@ -665,6 +677,7 @@ export class Reducer extends Stream2 {
 		if(this._activated && !this.subscribers.length) {
 			super._deactivate( subscriber, controller );
 			this._activated = null;
+			this.__controller = null;
 		}
 	}
 	
