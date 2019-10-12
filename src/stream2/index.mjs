@@ -4,6 +4,7 @@ import getTTMP from "./get-ttmp.mjs"
 
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
+const EMPTY_FN = () => EMPTY_OBJECT;
 const FROM_OWNER_STREAM = Object.freeze({ fromOwnerStream: 'fromOwnerStream' });
 let GLOBAL_CONNECTIONS_ID_COUNTER = 1;
 let GLOBAL_REQUEST_ID_COUNTER = 1;
@@ -42,7 +43,14 @@ export class Stream2 {
 
 	controller( connection ) {
 		return new Stream2( null,( e, controller ) => {
-			controller.to( this.on(e), connection.on( () => {} ) );
+			this.connect(hook => {
+				connection.connect( hook => {
+					controller.to(hook);
+					return EMPTY_FN;
+				} );
+				controller.to(hook);
+				return e;
+			} );
 		} );
 	}
 
