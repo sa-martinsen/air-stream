@@ -50,6 +50,39 @@ describe('reducer', function () {
         two();
 	    three();
     });
+    
+    /*
+   Подписка к редьюсеру, отписка
+   Повторная подписка - начальное состояние не должно сохраниться
+   так как может использоваться empty object state
+
+   const test = stream2( null, (e) => {
+	e(10);
+	//setTimeout( () => e(10) );
+} ).store();
+
+let hook1 = null;
+test.connect( (hook) => {
+	hook1 = hook;
+	return console.log;
+} );
+
+hook1();
+
+test.connect( (hook) => {
+	hook1 = hook;
+	return console.log;
+} );
+
+hook1();
+/*
+test.connect( (hook) => {
+	hook1 = hook;
+	return console.log;
+} );
+
+hook1();*/
+
 
 /*
     it('abort action', (done) => {
