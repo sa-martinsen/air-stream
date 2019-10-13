@@ -108,9 +108,9 @@ export class Stream2 {
 	}
 	
 	map(project) {
-		return new Stream2(null, (e, controller) => {
+		return new Stream2(null, (e, ctr) => {
 			this.connect( (hook) => {
-				controller.to(hook);
+				ctr.to(hook);
 				return (data, record) => {
 					if(isKeySignal(data)) {
 						return e(data, record);
@@ -123,8 +123,8 @@ export class Stream2 {
 	
 	connect( connector ) {
 		const controller = this.createController();
-		const hook = ({ disconnect = false, ...args } = { disconnect: true }) => {
-			if(disconnect) {
+		const hook = (action = "disconnect", data = null) => {
+			if(action === "disconnect") {
 				const removed = this.subscribers.indexOf(subscriber);
 				/*<@debug>*/
 				if(removed < 0) throw `
@@ -135,11 +135,7 @@ export class Stream2 {
 				this._deactivate( subscriber, controller );
 			}
 			else {
-				controller.send({
-					...args,
-					dissolve: false,
-					disconnect: false,
-				});
+				controller.send(action, data);
 			}
 		};
 		const subscriber = connector(hook);
@@ -151,8 +147,8 @@ export class Stream2 {
 		console.warn("This method deprecated now, pls use .connect() instead");
 		this.subscribers.push(subscriber);
 		const controller = this._activate( subscriber );
-		return ({ disconnect = false, ...args } = { disconnect: true }) => {
-			if(disconnect) {
+		return (action = "disconnect", data = null) => {
+			if(action === "disconnect") {
 				const removed = this.subscribers.indexOf(subscriber);
 				/*<@debug>*/
 				if(removed < 0) throw `
@@ -163,11 +159,7 @@ export class Stream2 {
 				this._deactivate( subscriber, controller );
 			}
 			else {
-				controller.send({
-					...args,
-					dissolve: false,
-					disconnect: false,
-				});
+				controller.send(action, data);
 			}
 		}
 	}
@@ -222,11 +214,7 @@ export class Stream2 {
 	}
 
 	_deactivate( subscriber, controller ) {
-		controller.send({
-			//todo cross ver support
-			dissolve: true,
-			disconnect: true,
-		});
+		controller.send("disconnect", null);
 	}
 	
 	createEmitter( subscriber ) {
@@ -238,9 +226,9 @@ export class Stream2 {
 			/*</@debug>*/
 			
 			//todo temporary cross ver support
-			if(isKeySignal(data)) {
+			/*if(isKeySignal(data)) {
 				return ;
-			}
+			}*/
 			
 			subscriber(data, record );
 		};
@@ -501,13 +489,18 @@ export class Controller {
 		this._tocommand.push( ...connectors );
 	}
 
-	send( data ) {
-		if(!data.disconnect) {
-			this._tocommand.map( connector => connector(data) );
+	send( action, data ) {
+		/*<@debug>*/
+		if(this.disconnected) {
+			throw `${this.src._label}: This controller is already diconnected`;
+		}
+		/*</@debug>*/
+		if(action !== "disconnect") {
+			this._tocommand.map( connector => connector(action, data) );
 		}
 		else {
 			this.disconnected = true;
-			this._todisconnect.map( connector => connector(data) );
+			this._todisconnect.map( connector => connector(action, data) );
 		}
 	}
 
