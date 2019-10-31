@@ -40,7 +40,10 @@ export class Stream2 {
 	
 	static merge(sourcestreams, project) {
 		return new Stream2( [], (e, controller) => {
-			controller.todisconnect(...sourcestreams.map( stream => stream.on( e ) ));
+			sourcestreams.map( stream => stream.connect( hook => {
+				controller.todisconnect(hook);
+				return e;
+			} ) );
 		});
 	}
 
@@ -75,9 +78,12 @@ export class Stream2 {
 
 	configure({ slave = false, stmp = false } = {}) {
 		return new Stream2(null, (e, controller) => {
-			controller.to( this.on( ( data, record ) =>
-				e(data, { ...record, slave, stmp: -stmp }) )
-			);
+			this.connect( hook => {
+				controller.to(hook);
+				return ( data, record ) => {
+					e(data, { ...record, slave, stmp: -stmp });
+				}
+			});
 		})
 	}
 
@@ -564,7 +570,7 @@ export class Reducer extends Stream2 {
 			if(state !== EMPTY_OBJECT && state !== FROM_OWNER_STREAM) {
 				if(type === 1) {
 					state.connect( hook => {
-						controller.to( srvRequesterHook = hook );
+						controller.todisconnect( srvRequesterHook = hook );
 						return (data) => {
 							e( state = init ? init(data) : data );
 						}
@@ -577,7 +583,7 @@ export class Reducer extends Stream2 {
 			}
 			if(sourcestreams) {
 				sourcestreams.connect( hook => {
-					controller.todisconnect(hook);
+					controller.to(hook);
 					return (data, { stmp, ...record } ) => {
 						if(state === FROM_OWNER_STREAM) {
 							state = init ? init(data[0]) : data[0];
