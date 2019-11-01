@@ -181,35 +181,41 @@ export class Stream2 {
 	
 	filter(project) {
 		return new Stream2(null, (e, controller) => {
-			controller.to(this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					return e(data, record);
+			this.connect( hook => {
+				controller.to(hook);
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						return e(data, record);
+					}
+					const res = project(data);
+					res && e(data, record);
 				}
-				const res = project(data);
-				res && e(data, record);
-			} ));
+			} );
 		});
 	}
 	
 	distinct(equal) {
 		return new Stream2(null, (e, controller) => {
 			let state = EMPTY_OBJECT;
-			controller.to(this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					if(data === keyA) {
-						state = EMPTY_OBJECT;
+			this.connect( hook => {
+				controller.to( hook );
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						if(data === keyA) {
+							state = EMPTY_OBJECT;
+						}
+						return e(data, record);
 					}
-					return e(data, record);
+					else if(state === EMPTY_OBJECT) {
+						state = data;
+						e(data, record);
+					}
+					else if(!equal(state, data)) {
+						state = data;
+						e(data, record);
+					}
 				}
-				else if(state === EMPTY_OBJECT) {
-					state = data;
-					e(data, record);
-				}
-				else if(!equal(state, data)) {
-					state = data;
-					e(data, record);
-				}
-			} ));
+			} );
 		});
 	}
 	
