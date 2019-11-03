@@ -130,6 +130,11 @@ export class Stream2 {
 	connect( connector ) {
 		const controller = this.createController();
 		const hook = (action = "disconnect", data = null) => {
+			/*<@debug>*/
+			if(typeof action !== "string") {
+				throw new TypeError("Action must be a string only");
+			}
+			/*</@debug>*/
 			if(action === "disconnect") {
 				const removed = this.subscribers.indexOf(subscriber);
 				/*<@debug>*/
@@ -372,17 +377,15 @@ export class Stream2 {
 		return new Stream2(null, (e, controller) => {
 			const connection = { id: GLOBAL_CONNECTIONS_ID_COUNTER ++ };
 			remoteservicecontroller.connect( (hook) => {
-				controller.tocommand(({ dissolve, disconnect, ...data }) => {
-					hook({ request: "command", data, connection });
+				controller.tocommand((request, data) => {
+					if(request === "request") {
+						hook("command", { data, connection });
+					}
 				});
 				controller.todisconnect(hook);
 				return ({ event, data, connection: { id } }, record) => {
 					if(event === "remote-service-ready") {
-						hook({
-							request: "subscribe",
-							stream,
-							connection,
-						});
+						hook("subscribe", { stream, connection });
 					}
 					else if(event === "reinitial-state" && connection.id === id ) {
 						e(data, { ...record, grid: 0 });
@@ -451,9 +454,14 @@ export class RemouteService extends Stream2 {
 				}
 			}
 			function onsocketopendhandler() {
-				controller.tocommand( ({ disconnect, dissolve, ...data }) => {
-					data.stmp = STMPSuncData.remoute - STMPSuncData.connected - data.stmp;
-					websocketconnection.send( JSON.stringify(data) );
+				controller.tocommand( (request, data) => {
+					if(request === "subscribe") {
+						websocketconnection.send( JSON.stringify({ ...data, request }) );
+					}
+					if(request === "command") {
+						const stmp = STMPSuncData.remoute - STMPSuncData.connected - data.stmp;
+						websocketconnection.send( JSON.stringify({ ...data, stmp, request })  );
+					}
 				} );
 			}
 			if(websocketconnection.readyState === WebSocket.OPEN) {
@@ -567,7 +575,11 @@ export class Reducer extends Stream2 {
 				if(events.length) {
 					events.map( evt => {
 						sked.splice(sked.indexOf(evt), 1);
-						e( ...evt );
+						const newstate = project(state, evt[0]);
+						if(newstate !== undefined) {
+							state = newstate;
+							e( state, evt[1] );
+						}
 					} );
 				}
 			} );
@@ -576,6 +588,12 @@ export class Reducer extends Stream2 {
 			if(state !== EMPTY_OBJECT && state !== FROM_OWNER_STREAM) {
 				if(type === 1) {
 					state.connect( hook => {
+						controller.tocommand( (request, data) => {
+							//todo need req cb
+							if(request === "request") {
+								hook(request, data);
+							}
+						} );
 						controller.todisconnect( srvRequesterHook = hook );
 						return (data) => {
 							e( state = init ? init(data) : data );
@@ -597,6 +615,7 @@ export class Reducer extends Stream2 {
 						}
 						const needConfirmation = type === 1 && record.slave;
 						if(stmp) {
+							const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
 							record = { stmp: STMPSuncData.current + 4, ...record };
 							if(needConfirmation) {
 								record = { ...record, slave: false, grid, confirmed: !type };
@@ -606,7 +625,7 @@ export class Reducer extends Stream2 {
 							}
 							sked.push([data, record]);
 							if(needConfirmation) {
-								srvRequesterHook({ grid, data, record });
+								srvRequesterHook("request", { grid, data, record });
 							}
 						}
 						else {
@@ -628,7 +647,7 @@ export class Reducer extends Stream2 {
 								}
 								e( state, record );
 								if(needConfirmation) {
-									srvRequesterHook({ grid, data, record });
+									srvRequesterHook("request", { grid, data, record });
 								}
 							}
 						}
