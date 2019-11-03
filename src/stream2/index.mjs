@@ -536,6 +536,13 @@ export class EndPoint extends Stream2 {
 		}
 		return this.emitter;
 	}
+	
+	createController( ) {
+		if(!this.__controller) {
+			this.__controller = super.createController();
+		}
+		return this.__controller;
+	}
 
 	_activate() {
 		if(!this._activated) {
