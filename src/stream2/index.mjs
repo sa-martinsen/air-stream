@@ -109,6 +109,23 @@ export class Stream2 {
 		});
 	}
 
+	/**
+	 @example
+	 stream2.with( [streamA, streamB], owner => (event, source, record) => {
+			//источник определяется в момент коннекта
+			//может быть временно неопределенным
+			//к синхронному к своим ичтоникам потоку
+			//нельзя динамически присоединять другие асинхронные источники
+			//такая операция будет вызывать исключение
+			owner.attach( stream[, customHandler ] );
+			//используется общий обработчик, если явно не указан другой
+			owner.detach( stream );
+		} );
+	 */
+	static with(streams, handler, sync = true) {
+
+	}
+
 	store() {
 		return new Reducer( null, null, this );
 	}
