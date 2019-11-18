@@ -4,6 +4,7 @@ import getTTMP from "./get-ttmp.mjs"
 
 
 const EMPTY_OBJECT = Object.freeze({ empty: 'empty' });
+const EMPTY_FN = () => EMPTY_OBJECT;
 const FROM_OWNER_STREAM = Object.freeze({ fromOwnerStream: 'fromOwnerStream' });
 let GLOBAL_CONNECTIONS_ID_COUNTER = 1;
 let GLOBAL_REQUEST_ID_COUNTER = 1;
@@ -22,6 +23,9 @@ export class Stream2 {
 	
 	constructor(sourcestreams, project, ctx = null) {
 		this.subscribers = [];
+		/*<@debug>*/
+		this._label = "";
+		/*</@debug>*/
 		this.project = project;
 		this.ctx = ctx;
 		this.sourcestreams = sourcestreams;
@@ -36,25 +40,50 @@ export class Stream2 {
 	
 	static merge(sourcestreams, project) {
 		return new Stream2( [], (e, controller) => {
-			controller.todisconnect(...sourcestreams.map( stream => stream.on( e ) ));
+			sourcestreams.map( stream => stream.connect( hook => {
+				controller.todisconnect(hook);
+				return e;
+			} ) );
 		});
 	}
 
 	controller( connection ) {
 		return new Stream2( null,( e, controller ) => {
-			controller.to( this.on(e), connection.on( () => {} ) );
+			this.connect(hook => {
+				connection.connect( hook => {
+					controller.to(hook);
+					return EMPTY_FN;
+				} );
+				controller.to(hook);
+				return e;
+			} );
 		} );
 	}
 
 	reduceF(state, project, init) {
+		if(state instanceof Function) {
+			init = project;
+			project = state;
+			state = FROM_OWNER_STREAM;
+		}
 		return new Reducer( this, project, state, init);
 	}
+	
+	/*<@debug>*/
+	label(label) {
+		this._label = label;
+		return this;
+	}
+	/*</@debug>*/
 
 	configure({ slave = false, stmp = false } = {}) {
 		return new Stream2(null, (e, controller) => {
-			controller.to( this.on( ( data, record ) =>
-				e(data, { ...record, slave, stmp: -stmp }) )
-			);
+			this.connect( hook => {
+				controller.to(hook);
+				return ( data, record ) => {
+					e(data, { ...record, slave, stmp: -stmp });
+				}
+			});
 		})
 	}
 
@@ -80,28 +109,85 @@ export class Stream2 {
 		});
 	}
 
+	/**
+	 @example
+	 stream2.with( [streamA, streamB], owner => (event, source, record) => {
+			//источник определяется в момент коннекта
+			//может быть временно неопределенным
+			//к синхронному к своим ичтоникам потоку
+			//нельзя динамически присоединять другие асинхронные источники
+			//такая операция будет вызывать исключение
+			owner.attach( stream[, customHandler ] );
+			//используется общий обработчик, если явно не указан другой
+			owner.detach( stream );
+		} );
+	 */
+	static with(streams, handler, sync = true) {
+
+	}
+
 	store() {
 		return new Reducer( null, null, this );
 	}
 	
-	on( subscriber ) {
-		this.subscribers.push(subscriber);
-		const controller = this._activate( subscriber );
-		return ({ disconnect = false, ...args } = { disconnect: true }) => {
-			if(disconnect) {
+	map(project) {
+		return new Stream2(null, (e, ctr) => {
+			this.connect( (hook) => {
+				ctr.to(hook);
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						return e(data, record);
+					}
+					e(project(data), record);
+				}
+			});
+		});
+	}
+	
+	connect( connector ) {
+		const controller = this.createController();
+		const hook = (action = "disconnect", data = null) => {
+			/*<@debug>*/
+			if(typeof action !== "string") {
+				throw new TypeError("Action must be a string only");
+			}
+			/*</@debug>*/
+			if(action === "disconnect") {
 				const removed = this.subscribers.indexOf(subscriber);
 				/*<@debug>*/
-				if(removed < 0) throw `Attempt to delete an subscriber out of the container`;
+				if(removed < 0) throw `
+					${this._label}: Attempt to delete an subscriber out of the container
+				`;
 				/*</@debug>*/
 				this.subscribers.splice(removed, 1);
 				this._deactivate( subscriber, controller );
 			}
 			else {
-				controller.send({
-					...args,
-					dissolve: false,
-					disconnect: false,
-				});
+				controller.send(action, data);
+			}
+		};
+		const subscriber = connector(hook);
+		this.subscribers.push(subscriber);
+		this._activate( subscriber, controller );
+	}
+	
+	on( subscriber ) {
+		console.warn("This method deprecated now, pls use .connect() instead");
+		this.subscribers.push(subscriber);
+		const controller = this._activate( subscriber );
+		return (action = "disconnect", data = null) => {
+			if(action === "disconnect") {
+				const removed = this.subscribers.indexOf(subscriber);
+				/*<@debug>*/
+				if(removed < 0) throw `
+					${this._label}: Attempt to delete an subscriber out of the container
+				`;
+				/*</@debug>*/
+				this.subscribers.splice(removed, 1);
+				this._deactivate( subscriber, controller );
+			}
+			else {
+				controller.send(action, data);
 			}
 		}
 	}
@@ -115,52 +201,43 @@ export class Stream2 {
 		} );
 	}
 	
-	connectable() {
-		return new Connectable( this );
-	}
-	
-	map(project) {
-		return new Stream2(null, (e, controller) => {
-			controller.to(this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					return e(data, record);
-				}
-				e(project(data), record);
-			} ));
-		});
-	}
-	
 	filter(project) {
 		return new Stream2(null, (e, controller) => {
-			controller.to(this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					return e(data, record);
+			this.connect( hook => {
+				controller.to(hook);
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						return e(data, record);
+					}
+					const res = project(data);
+					res && e(data, record);
 				}
-				const res = project(data);
-				res && e(data, record);
-			} ));
+			} );
 		});
 	}
 	
 	distinct(equal) {
 		return new Stream2(null, (e, controller) => {
 			let state = EMPTY_OBJECT;
-			controller.to(this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					if(data === keyA) {
-						state = EMPTY_OBJECT;
+			this.connect( hook => {
+				controller.to( hook );
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						if(data === keyA) {
+							state = EMPTY_OBJECT;
+						}
+						return e(data, record);
 					}
-					return e(data, record);
+					else if(state === EMPTY_OBJECT) {
+						state = data;
+						e(data, record);
+					}
+					else if(!equal(state, data)) {
+						state = data;
+						e(data, record);
+					}
 				}
-				else if(state === EMPTY_OBJECT) {
-					state = data;
-					e(data, record);
-				}
-				else if(!equal(state, data)) {
-					state = data;
-					e(data, record);
-				}
-			} ));
+			} );
 		});
 	}
 	
@@ -171,11 +248,7 @@ export class Stream2 {
 	}
 
 	_deactivate( subscriber, controller ) {
-		controller.send({
-			//todo cross ver support
-			dissolve: true,
-			disconnect: true,
-		});
+		controller.send("disconnect", null);
 	}
 	
 	createEmitter( subscriber ) {
@@ -187,16 +260,16 @@ export class Stream2 {
 			/*</@debug>*/
 			
 			//todo temporary cross ver support
-			if(isKeySignal(data)) {
+			/*if(isKeySignal(data)) {
 				return ;
-			}
+			}*/
 			
 			subscriber(data, record );
 		};
 	}
 	
 	createController(  ) {
-		return new Controller(  );
+		return new Controller( this );
 	}
 	
 	static sync (sourcestreams, equal, poject = STATIC_PROJECTS.AIO) {
@@ -219,13 +292,16 @@ export class Stream2 {
 	
 	withHandler (handler) {
 		return new Stream2(null, (e, controller) =>
-			controller.to(this.on((evt, record) => {
-				if (Observable.keys.includes(evt)) {
-					return e(evt, record);
+			this.connect(hook => {
+				controller.to(hook);
+				return (evt, record) => {
+					if (Observable.keys.includes(evt)) {
+						return e(evt, record);
+					}
+					const _e = (evt, _record) => e(evt, _record || record);
+					return handler(_e, evt);
 				}
-				const _e = (evt, _record) => e(evt, _record || record);
-				return handler(_e, evt);
-			}))
+			})
 		);
 	}
 	
@@ -237,17 +313,20 @@ export class Stream2 {
 		}
 		return new Stream2( sourcestreams, (e, controller) => {
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
-			controller.to( ...sourcestreams.map( (stream, i) => {
-				return stream.on( (data, record) => {
-					if(Observable.keys.includes(data)) {
-						return e( data, record );
-					}
-					sourcestreamsstate[i] = data;
-					if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
-						e(project(...sourcestreamsstate), record);
+			sourcestreams.map( (stream, i) => {
+				return stream.connect( hook => {
+					controller.to(hook);
+					return (data, record) => {
+						if(Observable.keys.includes(data)) {
+							return e( data, record );
+						}
+						sourcestreamsstate[i] = data;
+						if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
+							e(project(...sourcestreamsstate), record);
+						}
 					}
 				} );
-			} ) );
+			} );
 		} );
 	}
 	
@@ -255,73 +334,87 @@ export class Stream2 {
 		return new Stream2( null, (e, controller) => {
 			let slave = false;
 			const sourcestreamsstate = new Array(sourcestreams.length).fill( EMPTY_OBJECT );
-			controller.todisconnect( ...sourcestreams.map( (stream, i) => {
-				return stream.on( (data, record) => {
-					if(record.slave) slave = true;
-					if(isKeySignal(data)) {
-						return e( data, { ...record, slave } );
+			sourcestreams.map( (stream, i) => {
+				stream.connect((hook) => {
+					controller.todisconnect(hook);
+					return (data, record) => {
+						if (record.slave) slave = true;
+						if (isKeySignal(data)) {
+							return e(data, {...record, slave});
+						}
+						sourcestreamsstate[i] = data;
 					}
-					sourcestreamsstate[i] = data;
-				} );
-			} ) );
-			controller.to( this.on( (data, record) => {
-				if(isKeySignal(data)) {
-					return e( data, record );
+				});
+			});
+			this.connect( hook => {
+				controller.to(hook);
+				return (data, record) => {
+					if(isKeySignal(data)) {
+						return e( data, record );
+					}
+					if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
+						e(project(data, ...sourcestreamsstate), { ...record, slave });
+					}
 				}
-				if(!sourcestreamsstate.includes(EMPTY_OBJECT)) {
-					e(project(data, ...sourcestreamsstate), { ...record, slave });
-				}
-			} ) );
+			} );
 		} );
 	}
 	
+	/*<@debug>*/
 	log() {
 		return new Stream2( this, (e, controller) => {
-			controller.to(this.on((data, record) => {
-				console.log(data);
-				e(data, record);
-			}));
+			this.connect(hook => {
+				controller.to( hook );
+				return (data, record) => {
+					console.log(data);
+					e(data, record);
+				}
+			});
 		});
 	}
+	/*</@debug>*/
 
 	/**
 	 * Кеширует соединение линии потока, чтобы новые стримы не создавались
 	 */
 	endpoint() {
 		return new EndPoint( null, (e, controller) => {
-			controller.to(this.on(e));
+			this.connect(hook => {
+				controller.to(hook);
+				return e;
+			});
 		} );
 	}
 	
 	/**
-	 * @param {RemouteService} remoteservicecontroller - Remoute service controller connection
+	 * @param {fromRemoteService} remoteservicecontroller - Remoute service controller connection
 	 * @param {Object} stream - Stream name from server
 	 */
-	static fromRemouteService( remoteservicecontroller, stream ) {
+	static fromRemoteService( remoteservicecontroller, stream ) {
 		return new Stream2(null, (e, controller) => {
 			const connection = { id: GLOBAL_CONNECTIONS_ID_COUNTER ++ };
-			let hook = remoteservicecontroller.on( ({ event, data, connection: { id } }, record) => {
-				if(event === "remote-service-ready") {
-					hook({
-						request: "subscribe",
-						stream,
-						connection,
-					});
+			remoteservicecontroller.connect( (hook) => {
+				controller.tocommand((request, data) => {
+					if(request === "request") {
+						hook("command", { data, connection });
+					}
+				});
+				controller.todisconnect(hook);
+				return ({ event, data, connection: { id } }, record) => {
+					if(event === "remote-service-ready") {
+						hook("subscribe", { stream, connection });
+					}
+					else if(event === "reinitial-state" && connection.id === id ) {
+						e(data, { ...record, grid: 0 });
+					}
+					else if(event === "data" && connection.id === id ) {
+						e(data, { ...record, grid: -1 });
+					}
+					else if(event === "result" && connection.id === id ) {
+						e(data, { ...record, grid: -1 });
+					}
 				}
-				else if(event === "reinitial-state" && connection.id === id ) {
-					e(data, { ...record, grid: 0 });
-				}
-				else if(event === "data" && connection.id === id ) {
-					e(data, { ...record, grid: -1 });
-				}
-				else if(event === "result" && connection.id === id ) {
-					e(data, { ...record, grid: -1 });
-				}
-			} );
-			controller.tocommand(({ dissolve, disconnect, ...data }) => {
-				hook({ request: "command", data, connection });
 			});
-			controller.todisconnect(hook);
 		} );
 	}
 	
@@ -365,9 +458,6 @@ export class RemouteService extends Stream2 {
 				websocketconnection = new WebSocket(`ws://${host}:${port}`);
 				UPS.subscribe( stmp => STMPSuncData.current = stmp );
 			}
-			if(remouteserviceconnectionstatus === "ready") {
-				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
-			}
 			function onsocketmessagehandler({ data: raw }) {
 				const msg = JSON.parse(raw);
 				if(msg.event === "remote-service-ready") {
@@ -381,9 +471,14 @@ export class RemouteService extends Stream2 {
 				}
 			}
 			function onsocketopendhandler() {
-				controller.tocommand( ({ disconnect, dissolve, ...data }) => {
-					data.stmp = STMPSuncData.remoute - STMPSuncData.connected - data.stmp;
-					websocketconnection.send( JSON.stringify(data) );
+				controller.tocommand( (request, data) => {
+					if(request === "subscribe") {
+						websocketconnection.send( JSON.stringify({ ...data, request }) );
+					}
+					if(request === "command") {
+						const stmp = STMPSuncData.remoute - STMPSuncData.connected - data.stmp;
+						websocketconnection.send( JSON.stringify({ ...data, stmp, request })  );
+					}
 				} );
 			}
 			if(websocketconnection.readyState === WebSocket.OPEN) {
@@ -395,6 +490,9 @@ export class RemouteService extends Stream2 {
 					socket.removeEventListener("open", onsocketopendhandler);
 				} );
 			}
+			if(remouteserviceconnectionstatus === "ready") {
+				e( { event: "remote-service-ready", connection: { id: -1 }, data: null } );
+			}
 			websocketconnection.addEventListener("message", onsocketmessagehandler);
 			controller.todisconnect( () => {
 				websocketconnection.removeEventListener("message", onsocketmessagehandler);
@@ -404,13 +502,15 @@ export class RemouteService extends Stream2 {
 
 }
 
+Stream2.FROM_OWNER_STREAM = FROM_OWNER_STREAM;
+
 export class Controller {
 	
-	constructor() {
+	constructor(src) {
+		this.src = src;
 		this.disconnected = false;
 		this._todisconnect = [];
 		this._tocommand = [];
-		this._to = [];
 	}
 	
 	todisconnect(...connectors) {
@@ -418,43 +518,27 @@ export class Controller {
 	}
 	
 	to(...connectors) {
-		this._to.push(...connectors);
+		this._todisconnect.push(...connectors);
+		this._tocommand.push(...connectors);
 	}
 	
 	tocommand( ...connectors ) {
 		this._tocommand.push( ...connectors );
 	}
 
-	send( data ) {
-		if(data.disconnect) {
-			this.disconnected = true;
-			this._todisconnect.map( connector => connector(data) );
+	send( action, data ) {
+		/*<@debug>*/
+		if(this.disconnected) {
+			throw `${this.src._label}: This controller is already diconnected`;
+		}
+		/*</@debug>*/
+		if(action !== "disconnect") {
+			this._tocommand.map( connector => connector(action, data) );
 		}
 		else {
-			this._tocommand.map( connector => connector(data) );
+			this.disconnected = true;
+			this._todisconnect.map( connector => connector(action, data) );
 		}
-		this._to.map( connector => connector(data) );
-	}
-
-}
-
-export class Connectable extends Stream2 {
-	
-	constructor( sourcestreams ) {
-		super(sourcestreams, (e, controller) => {
-			controller.to( sourcestreams.on(e) );
-		});
-		this._activations = [];
-	}
-	
-	connect() {
-		this._activations.map( ([ subscriber, controller ]) => super._activate(subscriber, controller) );
-	}
-	
-	_activate( subscriber ) {
-		const controller = this.createController();
-		this._activations.push( [ subscriber, controller ] );
-		return controller;
 	}
 
 }
@@ -468,6 +552,13 @@ export class EndPoint extends Stream2 {
 			};
 		}
 		return this.emitter;
+	}
+	
+	createController( ) {
+		if(!this.__controller) {
+			this.__controller = super.createController();
+		}
+		return this.__controller;
 	}
 
 	_activate() {
@@ -494,9 +585,12 @@ export class Reducer extends Stream2 {
 	 * @param state {Object|Stream2} Initial state (from static or stream)
 	 * @param init {Function} Initial state mapper
 	 */
-	constructor(sourcestreams, project = (_, data) => data, state = EMPTY_OBJECT, init = null) {
-		const type = state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
+	constructor(sourcestreams, project = (_, data) => data, _state = EMPTY_OBJECT, init = null) {
+		const cst = _state;
+		const type = _state instanceof Stream2 ? 1/*"slave"*/ : 0/*"internal"*/;
 		super(sourcestreams, (e, controller) => {
+			//initial state reused
+			let state = _state;
 			const sked = [];
 			const STMPSuncData = { current: -1 };
 			UPS.subscribe( stmp => {
@@ -505,16 +599,30 @@ export class Reducer extends Stream2 {
 				if(events.length) {
 					events.map( evt => {
 						sked.splice(sked.indexOf(evt), 1);
-						e( ...evt );
+						const newstate = project(state, evt[0]);
+						if(newstate !== undefined) {
+							state = newstate;
+							e( state, evt[1] );
+						}
 					} );
 				}
 			} );
 			let srvRequesterHook = null;
+
 			if(state !== EMPTY_OBJECT && state !== FROM_OWNER_STREAM) {
 				if(type === 1) {
-					controller.to(srvRequesterHook = state.on( (data) => {
-						e( state = init ? init(data) : data );
-					} ));
+					state.connect( hook => {
+						controller.tocommand( (request, data) => {
+							//todo need req cb
+							if(request === "request") {
+								hook(request, data);
+							}
+						} );
+						controller.todisconnect( srvRequesterHook = hook );
+						return (data) => {
+							e( state = init ? init(data) : data );
+						}
+					} );
 				}
 				else {
 					state = init ? init(state) : state;
@@ -522,44 +630,53 @@ export class Reducer extends Stream2 {
 				}
 			}
 			if(sourcestreams) {
-
-				controller.todisconnect(sourcestreams.on( (data, { stmp, ...record } ) => {
-					if(state === FROM_OWNER_STREAM) {
-						state = init ? init(data[0]) : data[0];
-						return e( [ state, {} ], { ttmp: getTTMP() } );
-					}
-					const needConfirmation = type === 1 && record.slave;
-					if(stmp) {
-						record = { stmp: STMPSuncData.current + 4, ...record };
-						if(needConfirmation) {
-							record = { ...record, slave: false, grid, confirmed: !type };
+				sourcestreams.connect( hook => {
+					controller.to(hook);
+					return (data, { stmp, ...record } ) => {
+						if(state === FROM_OWNER_STREAM) {
+							state = init ? init(data[0]) : data[0];
+							return e( [ state, {} ], { ttmp: getTTMP() } );
 						}
-						else {
-							record = { ...record, grid, confirmed: !type };
-						}
-						sked.push([data, record]);
-						if(needConfirmation) {
-							srvRequesterHook({ grid, data, record });
-						}
-					}
-					else {
-						const newstate = project(state, data);
-						if(newstate !== undefined) {
-							state = newstate;
+						const needConfirmation = type === 1 && record.slave;
+						if(stmp) {
 							const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+							record = { stmp: STMPSuncData.current + 4, ...record };
 							if(needConfirmation) {
 								record = { ...record, slave: false, grid, confirmed: !type };
 							}
 							else {
 								record = { ...record, grid, confirmed: !type };
 							}
-							e( state, record );
+							sked.push([data, record]);
 							if(needConfirmation) {
-								srvRequesterHook({ grid, data, record });
+								srvRequesterHook("request", { grid, data, record });
+							}
+						}
+						else {
+							
+							//todo temporary solution
+							if(state instanceof Stream2) {
+								return;
+							}
+							
+							const newstate = project(state, data);
+							if(newstate !== undefined) {
+								state = newstate;
+								const grid = type === 1 ? GLOBAL_REQUEST_ID_COUNTER ++ : -1;
+								if(needConfirmation) {
+									record = { ...record, slave: false, grid, confirmed: !type };
+								}
+								else {
+									record = { ...record, grid, confirmed: !type };
+								}
+								e( state, record );
+								if(needConfirmation) {
+									srvRequesterHook("request", { grid, data, record });
+								}
 							}
 						}
 					}
-				} ));
+				} );
 			}
 			if(!sourcestreams && !state) {
 				/*<@debug>*/
@@ -575,10 +692,6 @@ export class Reducer extends Stream2 {
 	
 	get queue() {
 		return this._queue;
-	}
-
-	reduceF(project, init) {
-		return new Reducer( this, project, FROM_OWNER_STREAM, init);
 	}
 	
 	createEmitter( subscriber ) {
@@ -612,6 +725,7 @@ export class Reducer extends Stream2 {
 		if(this._activated && !this.subscribers.length) {
 			super._deactivate( subscriber, controller );
 			this._activated = null;
+			this.__controller = null;
 		}
 	}
 	
@@ -630,12 +744,21 @@ export class Reducer extends Stream2 {
 		}
 	}
 	
+	connect( connector ) {
+		super.connect( (hook) => {
+			const subscriber = connector(hook);
+			this.queue.map( ([data, record]) => {
+				subscriber(data, record);
+			});
+			return subscriber;
+		} );
+	}
+	
 	on( subscriber ) {
 		this.queue.map( ([data, record]) =>
 			subscriber => subscriber(data, record)
 		);
-		const hook = super.on( subscriber );
-		return hook;
+		return super.on( subscriber );
 	}
 
 }
