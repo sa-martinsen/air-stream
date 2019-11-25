@@ -29,7 +29,6 @@ export default class Observable {
     this.queue = [];
     this.processed = [];
     this.init = false;
-    this.options = { queueLength: MAX_QUEUE_LENGTH };
 
     const emt = (evt, src) => this.emit(evt, src);
     emt.emit = emt;
@@ -181,7 +180,9 @@ export default class Observable {
     return res;
   }
 
-  on (obs) {
+  on (obs, options = { queueLength: MAX_QUEUE_LENGTH }) {
+    this.options = options;
+
     /*<@>*/
     if (typeof obs !== 'function') throw `first argument 'obs' must be a function`; /*</@>*/
     this.obs.push(obs);
