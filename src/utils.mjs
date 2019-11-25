@@ -15,3 +15,23 @@ export function series (done, assert) {
     }
   };
 }
+
+export function equal(a, b) {
+  if(a === b) {
+    return true;
+  }
+  else {
+    if(Array.isArray(a)) {
+      return a.length === b.length && a.every( (a, i) => equal( a, b[i] ) );
+    }
+    else if(
+      typeof a === "object" && a !== null && b !== null && a.constructor === Object
+    ) {
+      const keysA = Object.keys(a);
+      const keysB = Object.keys(b);
+      return keysA.length === keysB.length &&
+        keysA.every( k => equal(a[k], b[k]) )
+    }
+    return false;
+  }
+}

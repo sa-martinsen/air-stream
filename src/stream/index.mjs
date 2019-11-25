@@ -1,8 +1,18 @@
 import Observable from '../observable/index.mjs';
 import Collector from './collector.mjs';
+import { equal } from '../utils';
 
 export default (creator, ctx = null) =>
   new Observable(emt => {
+
+    let prevState = [];
+    const emitIfChanged = (...state) => {
+      if (!equal(prevState, state)) {
+        prevState = state;
+        emt(...state)
+      }
+    };
+
     const sweep = new Collector();
     const hook = new Collector();
     const over = new Collector();
@@ -38,7 +48,7 @@ export default (creator, ctx = null) =>
         });
     };
 
-    const res = creator.call(ctx, emt, { sweep, hook, over, request });
+    const res = creator.call(ctx, emt, { emitIfChanged, sweep, hook, over, request });
     if (typeof res === 'function') sweep.add(res);
     return ({ dissolve = false, action = null, request = action, ...args } = { dissolve: true }) => {
       if (dissolve) {

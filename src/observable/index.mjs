@@ -13,6 +13,7 @@ import globals from './globals.mjs';
 
 const stacks = [];
 const QUEUE = new Queue();
+const MAX_QUEUE_LENGTH = 10;
 
 const { freeze } = Object;
 
@@ -179,7 +180,8 @@ export default class Observable {
     return res;
   }
 
-  on (obs) {
+  on (obs, options = { queueLength: MAX_QUEUE_LENGTH }) {
+    this.options = options;
     /*<@>*/
     if (typeof obs !== 'function') throw `first argument 'obs' must be a function`; /*</@>*/
     this.obs.push(obs);
@@ -248,6 +250,10 @@ export default class Observable {
 
     if (data === keyF) {
       this.clearProcessed();
+    }
+
+    if (this.queue.length > this.options.queueLength) {
+      this.queue.splice(0, this.queue.length - this.options.queueLength);
     }
 
     const evt = [data, { __sid__, is, rid }];
